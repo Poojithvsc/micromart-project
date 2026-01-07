@@ -404,22 +404,43 @@ feature/xyz → dev → Pull Request → main
 
 **Test Files Created:**
 ```
-user-service/src/test/java/
-├── architecture/ArchitectureTest.java       # ArchUnit rules
-├── controller/UserControllerTest.java       # MockMvc tests
-├── domain/UserTest.java                     # Entity tests
-├── domain/valueobject/EmailTest.java        # Value object tests
-├── repository/UserRepositoryIntegrationTest.java  # Testcontainers
-└── service/UserServiceImplTest.java         # Service unit tests
+user-service/src/test/
+├── java/com/micromart/user/
+│   ├── architecture/ArchitectureTest.java       # ArchUnit rules
+│   ├── controller/UserControllerTest.java       # MockMvc tests
+│   ├── domain/UserTest.java                     # Entity tests
+│   ├── domain/valueobject/EmailTest.java        # Value object tests
+│   ├── repository/UserRepositoryIntegrationTest.java  # Testcontainers
+│   └── service/UserServiceImplTest.java         # Service unit tests
+└── resources/application-test.yml               # Test configuration
 
-product-service/src/test/java/
-├── domain/InventoryTest.java                # Entity tests
-├── domain/valueobject/MoneyTest.java        # Money pattern tests
-└── service/InventoryServiceImplTest.java    # Service tests
+product-service/src/test/
+├── java/com/micromart/product/
+│   ├── domain/InventoryTest.java                # Entity tests
+│   ├── domain/valueobject/MoneyTest.java        # Money pattern tests
+│   └── service/InventoryServiceImplTest.java    # Service tests
+└── resources/application-test.yml               # Test configuration
 
-order-service/src/test/java/
-├── domain/OrderTest.java                    # Order entity tests
-└── service/OrderServiceImplTest.java        # Service tests
+order-service/src/test/
+├── java/com/micromart/order/
+│   ├── domain/OrderTest.java                    # Order entity tests
+│   └── service/OrderServiceImplTest.java        # Service tests
+└── resources/application-test.yml               # Test configuration
+```
+
+**Run Tests:**
+```bash
+# Run all unit tests
+mvn test
+
+# Run unit + integration tests
+mvn verify
+
+# Run with coverage report (generates target/site/jacoco/index.html)
+mvn verify -Pcoverage
+
+# Run specific service tests
+mvn test -pl user-service
 ```
 
 ### Phase 5: Terraform & AWS
@@ -456,6 +477,19 @@ order-service/src/test/java/
 | Manual Kafka Ack | `OrderEventConsumer` | At-least-once delivery |
 | Circuit Breaker | Feign fallbacks | Fault tolerance |
 | Event Sourcing (lite) | Kafka events | Audit trail |
+
+### Testing Concepts (Phase 4)
+| Concept | Example File | Description |
+|---------|--------------|-------------|
+| JUnit 5 @Nested | `UserServiceImplTest` | Organize related tests in nested classes |
+| Mockito @Mock/@InjectMocks | `OrderServiceImplTest` | Mock dependencies for isolation |
+| AssertJ Fluent Assertions | All test files | Readable assertion chains |
+| @ParameterizedTest | `EmailTest`, `MoneyTest` | Test multiple inputs with single test |
+| Testcontainers | `UserRepositoryIntegrationTest` | Real PostgreSQL in Docker |
+| @WebMvcTest + MockMvc | `UserControllerTest` | Test controllers without full context |
+| @WithMockUser | `UserControllerTest` | Test Spring Security endpoints |
+| ArchUnit | `ArchitectureTest` | Enforce architectural rules as tests |
+| BDD Style (given/when/then) | All service tests | Readable test structure |
 
 ---
 

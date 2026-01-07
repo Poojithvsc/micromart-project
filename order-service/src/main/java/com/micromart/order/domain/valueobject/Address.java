@@ -20,7 +20,7 @@ import java.io.Serializable;
 @EqualsAndHashCode
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
+@Builder(builderClassName = "AddressBuilder")
 public class Address implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -65,5 +65,25 @@ public class Address implements Serializable {
     @Override
     public String toString() {
         return getFormattedAddress();
+    }
+
+    /**
+     * Alias for getPostalCode() for US-centric code.
+     */
+    public String getZipCode() {
+        return postalCode;
+    }
+
+    /**
+     * Custom builder with zipCode alias for postalCode.
+     */
+    public static class AddressBuilder {
+        /**
+         * Alias for postalCode() method - supports both naming conventions.
+         */
+        public AddressBuilder zipCode(String zipCode) {
+            this.postalCode = zipCode;
+            return this;
+        }
     }
 }

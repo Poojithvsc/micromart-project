@@ -63,8 +63,8 @@ class ArchitectureTest {
 
                     .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
                     .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service")
-                    .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
-                    .whereLayer("Domain").mayBeAccessedByAnyLayer();
+                    .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service");
+                    // Domain layer is accessible by all layers by default (no restriction needed)
 
             rule.check(importedClasses);
         }

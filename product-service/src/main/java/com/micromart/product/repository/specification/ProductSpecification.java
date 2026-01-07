@@ -118,8 +118,8 @@ public final class ProductSpecification {
                 return criteriaBuilder.conjunction();
             }
 
-            // Access the embedded Money value object's amount
-            var priceAmount = root.get("price").get("amount");
+            // Access the embedded Money value object's amount with proper typing
+            jakarta.persistence.criteria.Path<BigDecimal> priceAmount = root.get("price").get("amount");
 
             if (minPrice != null && maxPrice != null) {
                 return criteriaBuilder.between(priceAmount, minPrice, maxPrice);

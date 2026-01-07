@@ -4,6 +4,7 @@ import com.micromart.common.domain.AuditableEntity;
 import com.micromart.order.domain.valueobject.Address;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,7 +30,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Order extends AuditableEntity {
 
     @Column(name = "order_number", nullable = false, unique = true, length = 50)
@@ -78,6 +79,9 @@ public class Order extends AuditableEntity {
 
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
 
     // ========================================================================
     // Domain Behavior - Rich Domain Model
@@ -141,11 +145,31 @@ public class Order extends AuditableEntity {
             throw new IllegalStateException("Cannot cancel shipped or delivered order");
         }
         this.status = OrderStatus.CANCELLED;
+        this.cancelledAt = LocalDateTime.now();
     }
 
     public boolean canBeCancelled() {
         return this.status != OrderStatus.SHIPPED &&
                this.status != OrderStatus.DELIVERED &&
                this.status != OrderStatus.CANCELLED;
+    }
+
+    /**
+     * Mark payment as received for this order.
+     * Alias for markPaymentCompleted() for API consistency.
+     */
+    public void markPaymentReceived() {
+        markPaymentCompleted();
+    }
+
+    /**
+     * Get the total number of items in this order.
+     *
+     * @return sum of quantities across all order items
+     */
+    public int getItemCount() {
+        return items.stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
     }
 }

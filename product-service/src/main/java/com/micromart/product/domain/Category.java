@@ -3,6 +3,7 @@ package com.micromart.product.domain;
 import com.micromart.common.domain.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Category extends AuditableEntity {
 
     @Column(name = "name", nullable = false, length = 100)

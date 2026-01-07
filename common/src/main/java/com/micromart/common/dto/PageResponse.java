@@ -116,4 +116,16 @@ public class PageResponse<T> {
                 .empty(content == null || content.isEmpty())
                 .build();
     }
+
+    /**
+     * Factory method to create PageResponse directly from Spring Data Page.
+     * Alias for {@link #from(Page)} for consistent API.
+     *
+     * @param page Spring Data Page object
+     * @param <T>  Type of items
+     * @return PageResponse containing page data and metadata
+     */
+    public static <T> PageResponse<T> of(Page<T> page) {
+        return from(page);
+    }
 }

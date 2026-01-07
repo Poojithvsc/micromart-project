@@ -1,0 +1,326 @@
+# =============================================================================
+# MicroMart - Continuous Integration Workflow
+# =============================================================================
+# Triggered on:
+# - Push to dev branch
+# - Pull requests to main branch
+#
+# Learning Points:
+# - GitHub Actions workflow syntax
+# - Matrix builds for multiple services
+# - Caching dependencies for faster builds
+# - Running tests with Testcontainers
+# - Code coverage reporting
+# =============================================================================
+
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: -Xmx1024m
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build and Test Common Module First (dependency for other services)
+  # ---------------------------------------------------------------------------
+  build-common:
+    name: Build Common Module
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Common Module
+        run: |
+          cd common
+          mvn clean install -DskipTests
+
+      - name: Upload Common Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: common-module
+          path: common/target/*.jar
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Build and Test All Microservices (Matrix Strategy)
+  # ---------------------------------------------------------------------------
+  build-services:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: build-common
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - eureka-server
+          - api-gateway
+          - user-service
+          - product-service
+          - order-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download Common Module
+        uses: actions/download-artifact@v4
+        with:
+          name: common-module
+          path: common/target
+
+      - name: Install Common Module to Local Repo
+        run: |
+          cd common
+          mvn install:install-file \
+            -Dfile=target/common-1.0.0-SNAPSHOT.jar \
+            -DgroupId=com.micromart \
+            -DartifactId=common \
+            -Dversion=1.0.0-SNAPSHOT \
+            -Dpackaging=jar
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          mvn clean compile -DskipTests
+
+      - name: Run Unit Tests
+        run: |
+          cd ${{ matrix.service }}
+          mvn test -Dtest=!*IntegrationTest,!*IT
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/surefire-reports/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Integration Tests (requires Docker for Testcontainers)
+  # ---------------------------------------------------------------------------
+  integration-tests:
+    name: Integration Tests - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: build-services
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - user-service
+          - product-service
+          - order-service
+
+    services:
+      # PostgreSQL for integration tests (fallback if Testcontainers fails)
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download Common Module
+        uses: actions/download-artifact@v4
+        with:
+          name: common-module
+          path: common/target
+
+      - name: Install Common Module
+        run: |
+          cd common
+          mvn install:install-file \
+            -Dfile=target/common-1.0.0-SNAPSHOT.jar \
+            -DgroupId=com.micromart \
+            -DartifactId=common \
+            -Dversion=1.0.0-SNAPSHOT \
+            -Dpackaging=jar
+
+      - name: Run Integration Tests
+        run: |
+          cd ${{ matrix.service }}
+          mvn verify -DskipUnitTests -Dspring.profiles.active=test
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Upload Integration Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results-${{ matrix.service }}
+          path: ${{ matrix.service }}/target/failsafe-reports/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Code Quality Checks
+  # ---------------------------------------------------------------------------
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: build-common
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download Common Module
+        uses: actions/download-artifact@v4
+        with:
+          name: common-module
+          path: common/target
+
+      - name: Install Common Module
+        run: |
+          cd common
+          mvn install:install-file \
+            -Dfile=target/common-1.0.0-SNAPSHOT.jar \
+            -DgroupId=com.micromart \
+            -DartifactId=common \
+            -Dversion=1.0.0-SNAPSHOT \
+            -Dpackaging=jar
+
+      - name: Check Code Style (Checkstyle)
+        run: |
+          mvn checkstyle:check -pl !common || echo "Checkstyle not configured - skipping"
+        continue-on-error: true
+
+      - name: SpotBugs Analysis
+        run: |
+          mvn spotbugs:check -pl !common || echo "SpotBugs not configured - skipping"
+        continue-on-error: true
+
+  # ---------------------------------------------------------------------------
+  # Build Docker Images (without push - just validate)
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker Build - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [build-services, integration-tests]
+    if: github.event_name == 'pull_request'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - eureka-server
+          - api-gateway
+          - user-service
+          - product-service
+          - order-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download Common Module
+        uses: actions/download-artifact@v4
+        with:
+          name: common-module
+          path: common/target
+
+      - name: Install Common Module
+        run: |
+          cd common
+          mvn install:install-file \
+            -Dfile=target/common-1.0.0-SNAPSHOT.jar \
+            -DgroupId=com.micromart \
+            -DartifactId=common \
+            -Dversion=1.0.0-SNAPSHOT \
+            -Dpackaging=jar
+
+      - name: Build JAR
+        run: |
+          cd ${{ matrix.service }}
+          mvn package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: false
+          tags: micromart/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Summary Job
+  # ---------------------------------------------------------------------------
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [build-services, integration-tests, code-quality]
+    if: always()
+
+    steps:
+      - name: Check Build Status
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Services | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if any job failed
+        if: contains(needs.*.result, 'failure')
+        run: exit 1

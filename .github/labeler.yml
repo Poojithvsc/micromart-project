@@ -1,0 +1,77 @@
+# =============================================================================
+# MicroMart - PR Labeler Configuration
+# =============================================================================
+# Automatically labels PRs based on changed files.
+# Used by .github/workflows/pr-checks.yml
+# =============================================================================
+
+# Service Labels
+user-service:
+  - changed-files:
+      - any-glob-to-any-file: 'user-service/**'
+
+product-service:
+  - changed-files:
+      - any-glob-to-any-file: 'product-service/**'
+
+order-service:
+  - changed-files:
+      - any-glob-to-any-file: 'order-service/**'
+
+api-gateway:
+  - changed-files:
+      - any-glob-to-any-file: 'api-gateway/**'
+
+eureka-server:
+  - changed-files:
+      - any-glob-to-any-file: 'eureka-server/**'
+
+common:
+  - changed-files:
+      - any-glob-to-any-file: 'common/**'
+
+# Type Labels
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file: 'terraform/**'
+      - any-glob-to-any-file: 'docker-compose*.yml'
+      - any-glob-to-any-file: '**/Dockerfile'
+
+ci-cd:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+      - any-glob-to-any-file: 'docs/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: '**/src/test/**'
+      - any-glob-to-any-file: '**/*Test.java'
+      - any-glob-to-any-file: '**/*IT.java'
+
+configuration:
+  - changed-files:
+      - any-glob-to-any-file: '**/application*.yml'
+      - any-glob-to-any-file: '**/application*.properties'
+      - any-glob-to-any-file: '**/pom.xml'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file: '**/security/**'
+      - any-glob-to-any-file: '**/SecurityConfig.java'
+      - any-glob-to-any-file: '**/JwtConfig.java'
+
+database:
+  - changed-files:
+      - any-glob-to-any-file: '**/repository/**'
+      - any-glob-to-any-file: '**/entity/**'
+      - any-glob-to-any-file: '**/*.sql'
+      - any-glob-to-any-file: '**/migration/**'
+
+kafka:
+  - changed-files:
+      - any-glob-to-any-file: '**/kafka/**'
+      - any-glob-to-any-file: '**/event/**'

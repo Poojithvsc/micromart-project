@@ -1,0 +1,361 @@
+#!/bin/bash
+# =============================================================================
+# MicroMart - EC2 User Data Script
+# =============================================================================
+# This script runs on first boot to configure the EC2 instance.
+#
+# What it does:
+# 1. Installs Docker and Docker Compose
+# 2. Configures Docker to start on boot
+# 3. Installs AWS CLI and CloudWatch agent
+# 4. Creates environment file with configuration
+# 5. Pulls and starts application containers
+# =============================================================================
+
+set -e
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "=============================================="
+echo "MicroMart EC2 Bootstrap Script"
+echo "Started at: $(date)"
+echo "=============================================="
+
+# -----------------------------------------------------------------------------
+# Variables from Terraform
+# -----------------------------------------------------------------------------
+PROJECT_NAME="${project_name}"
+ENVIRONMENT="${environment}"
+AWS_REGION="${aws_region}"
+S3_BUCKET="${s3_bucket}"
+DB_HOST="${db_host}"
+DB_PORT="${db_port}"
+DB_USERNAME="${db_username}"
+DB_PASSWORD="${db_password}"
+
+# -----------------------------------------------------------------------------
+# System Updates
+# -----------------------------------------------------------------------------
+echo "Updating system packages..."
+dnf update -y
+
+# -----------------------------------------------------------------------------
+# Install Docker
+# -----------------------------------------------------------------------------
+echo "Installing Docker..."
+dnf install -y docker
+
+# Start Docker and enable on boot
+systemctl start docker
+systemctl enable docker
+
+# Add ec2-user to docker group
+usermod -a -G docker ec2-user
+
+# -----------------------------------------------------------------------------
+# Install Docker Compose
+# -----------------------------------------------------------------------------
+echo "Installing Docker Compose..."
+DOCKER_COMPOSE_VERSION="v2.24.0"
+curl -L "https://github.com/docker/compose/releases/download/$${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+# Create symlink
+ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+# Verify installation
+docker --version
+docker-compose --version
+
+# -----------------------------------------------------------------------------
+# Install Additional Tools
+# -----------------------------------------------------------------------------
+echo "Installing additional tools..."
+dnf install -y git jq htop
+
+# AWS CLI is pre-installed on Amazon Linux 2023
+
+# -----------------------------------------------------------------------------
+# Install CloudWatch Agent
+# -----------------------------------------------------------------------------
+echo "Installing CloudWatch agent..."
+dnf install -y amazon-cloudwatch-agent
+
+# Create CloudWatch agent config
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/user-data.log",
+            "log_group_name": "/aws/ec2/${project_name}/docker-host",
+            "log_stream_name": "{instance_id}/user-data"
+          },
+          {
+            "file_path": "/var/log/docker.log",
+            "log_group_name": "/aws/ec2/${project_name}/docker-host",
+            "log_stream_name": "{instance_id}/docker"
+          }
+        ]
+      }
+    }
+  },
+  "metrics": {
+    "namespace": "MicroMart/EC2",
+    "metrics_collected": {
+      "cpu": {
+        "measurement": ["cpu_usage_idle", "cpu_usage_user", "cpu_usage_system"],
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "metrics_collection_interval": 60,
+        "resources": ["/"]
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"],
+        "metrics_collection_interval": 60
+      }
+    }
+  }
+}
+CWCONFIG
+
+# Start CloudWatch agent
+systemctl enable amazon-cloudwatch-agent
+systemctl start amazon-cloudwatch-agent
+
+# -----------------------------------------------------------------------------
+# Create Application Directory
+# -----------------------------------------------------------------------------
+echo "Creating application directory..."
+mkdir -p /opt/micromart
+cd /opt/micromart
+
+# -----------------------------------------------------------------------------
+# Create Environment File
+# -----------------------------------------------------------------------------
+echo "Creating environment file..."
+cat > /opt/micromart/.env <<EOF
+# MicroMart Environment Configuration
+# Generated by Terraform on $(date)
+
+# Project Info
+PROJECT_NAME=$PROJECT_NAME
+ENVIRONMENT=$ENVIRONMENT
+
+# Database Configuration
+DB_HOST=$DB_HOST
+DB_PORT=$DB_PORT
+DB_USERNAME=$DB_USERNAME
+DB_PASSWORD=$DB_PASSWORD
+
+# Database Names
+USER_DB_NAME=user_db
+PRODUCT_DB_NAME=product_db
+ORDER_DB_NAME=order_db
+
+# AWS Configuration
+AWS_REGION=$AWS_REGION
+S3_BUCKET=$S3_BUCKET
+
+# Kafka Configuration
+KAFKA_SERVERS=kafka:9092
+
+# Eureka Configuration
+EUREKA_URL=http://eureka:8761/eureka/
+
+# Service Ports
+EUREKA_PORT=8761
+GATEWAY_PORT=8080
+USER_SERVICE_PORT=8081
+PRODUCT_SERVICE_PORT=8082
+ORDER_SERVICE_PORT=8083
+EOF
+
+# Secure the environment file
+chmod 600 /opt/micromart/.env
+
+# -----------------------------------------------------------------------------
+# Create Docker Compose File
+# -----------------------------------------------------------------------------
+echo "Creating Docker Compose file..."
+cat > /opt/micromart/docker-compose.yml <<'COMPOSE'
+version: '3.8'
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka Message Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Eureka Service Discovery
+  eureka:
+    image: micromart/eureka-server:latest
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # API Gateway
+  api-gateway:
+    image: micromart/api-gateway:latest
+    container_name: api-gateway
+    depends_on:
+      eureka:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # User Service
+  user-service:
+    image: micromart/user-service:latest
+    container_name: user-service
+    depends_on:
+      eureka:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://$${DB_HOST}:$${DB_PORT}/user_db
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+  # Product Service
+  product-service:
+    image: micromart/product-service:latest
+    container_name: product-service
+    depends_on:
+      eureka:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://$${DB_HOST}:$${DB_PORT}/product_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+  # Order Service
+  order-service:
+    image: micromart/order-service:latest
+    container_name: order-service
+    depends_on:
+      eureka:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://$${DB_HOST}:$${DB_PORT}/order_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+
+networks:
+  default:
+    name: micromart-network
+COMPOSE
+
+# Set ownership
+chown -R ec2-user:ec2-user /opt/micromart
+
+# -----------------------------------------------------------------------------
+# Create Systemd Service for Docker Compose
+# -----------------------------------------------------------------------------
+echo "Creating systemd service..."
+cat > /etc/systemd/system/micromart.service <<'SERVICE'
+[Unit]
+Description=MicroMart Docker Compose Application
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/micromart
+ExecStart=/usr/local/bin/docker-compose up -d
+ExecStop=/usr/local/bin/docker-compose down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+# Enable the service (don't start yet - images need to be pushed first)
+systemctl daemon-reload
+systemctl enable micromart.service
+
+# -----------------------------------------------------------------------------
+# Final Setup
+# -----------------------------------------------------------------------------
+echo "=============================================="
+echo "Bootstrap Complete!"
+echo "Finished at: $(date)"
+echo "=============================================="
+echo ""
+echo "Next steps:"
+echo "1. Push Docker images to ECR or Docker Hub"
+echo "2. SSH into instance and run: cd /opt/micromart && docker-compose up -d"
+echo "3. Or enable: systemctl start micromart"
+echo ""

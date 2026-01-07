@@ -1,6 +1,6 @@
 # MicroMart - Progress Tracker
 
-> **Last Updated:** January 2025 - Phase 4 Complete
+> **Last Updated:** January 2025 - Phase 6 Complete
 > **Repository:** https://github.com/Poojithvsc/micromart-project
 
 ---
@@ -20,11 +20,10 @@ Repository: https://github.com/Poojithvsc/micromart-project
 - Run: git checkout dev && git pull origin dev
 
 Current Status:
-- Phases 1-4: ✅ COMPLETE
-- Phase 5 (Terraform/AWS): 🔲 PENDING
-- Phase 6 (CI/CD): 🔲 PENDING
+- Phases 1-6: ✅ COMPLETE
+- All phases implemented!
 
-Next task: Start Phase 5 (Terraform) or Phase 6 (CI/CD)
+The project is feature-complete. Review and customize as needed.
 ```
 
 ---
@@ -37,8 +36,8 @@ Next task: Start Phase 5 (Terraform) or Phase 6 (CI/CD)
 | Phase 2: Services | ✅ Complete | User, Product, Order services with full functionality |
 | Phase 3: Kafka | ✅ Complete | Event-driven architecture with producers/consumers |
 | Phase 4: Testing | ✅ Complete | Unit, Integration, Architecture tests |
-| Phase 5: Terraform | 🔲 Pending | AWS infrastructure (EC2, RDS, S3) |
-| Phase 6: CI/CD | 🔲 Pending | GitHub Actions pipelines |
+| Phase 5: Terraform | ✅ Complete | AWS infrastructure (EC2, RDS, S3) |
+| Phase 6: CI/CD | ✅ Complete | GitHub Actions pipelines for CI/CD |
 
 ---
 
@@ -306,9 +305,9 @@ api-gateway/src/main/java/com/micromart/gateway/
 - [x] Unit Tests (JUnit 5, Mockito, AssertJ)
 - [x] Integration Tests (Testcontainers)
 - [x] Architecture Tests (ArchUnit)
-- [ ] Terraform (Phase 5)
-- [ ] AWS EC2/RDS (Phase 5)
-- [ ] GitHub Actions (Phase 6)
+- [x] Terraform (Infrastructure as Code)
+- [x] AWS VPC, EC2, RDS, S3, IAM
+- [x] GitHub Actions CI/CD
 
 ### Spring Boot Concepts
 - [x] @Controller, @Service, @Repository, @Component
@@ -443,19 +442,89 @@ mvn verify -Pcoverage
 mvn test -pl user-service
 ```
 
-### Phase 5: Terraform & AWS
-- [ ] VPC with public/private subnets
-- [ ] EC2 instance for Docker
-- [ ] RDS PostgreSQL (3 databases)
-- [ ] S3 bucket for images
-- [ ] Security groups
-- [ ] IAM roles for EC2 → S3
+### Phase 5: Terraform & AWS ✅ COMPLETE
+- [x] VPC with public/private subnets
+- [x] EC2 instance for Docker
+- [x] RDS PostgreSQL with Secrets Manager
+- [x] S3 bucket for images with lifecycle policies
+- [x] Security groups (ALB, EC2, RDS, Kafka)
+- [x] IAM roles for EC2 → S3, ECR, Secrets Manager, CloudWatch
 
-### Phase 6: CI/CD
-- [ ] GitHub Actions build workflow
-- [ ] Test automation
-- [ ] Docker image publishing
-- [ ] Deployment pipeline
+**Terraform Files Created:**
+```
+terraform/
+├── main.tf              # Provider configuration, locals
+├── variables.tf         # All configurable variables with validation
+├── outputs.tf           # Useful output values
+├── vpc.tf               # VPC, subnets, IGW, NAT, route tables
+├── security_groups.tf   # Security groups for all components
+├── ec2.tf               # EC2 Docker host with CloudWatch
+├── rds.tf               # RDS PostgreSQL with parameter groups
+├── s3.tf                # S3 bucket with versioning, encryption
+├── iam.tf               # IAM roles and policies
+├── templates/
+│   └── user_data.sh     # EC2 bootstrap script (Docker, Compose)
+├── terraform.tfvars.example
+├── .gitignore
+└── README.md
+```
+
+**Deploy Commands:**
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+terraform init
+terraform plan
+terraform apply
+```
+
+### Phase 6: CI/CD ✅ COMPLETE
+- [x] CI workflow (build, test, code quality)
+- [x] CD workflow (deploy to AWS via SSM)
+- [x] Docker build workflow (multi-platform, SBOM)
+- [x] PR checks workflow (labeling, validation)
+
+**GitHub Actions Files Created:**
+```
+.github/
+├── workflows/
+│   ├── ci.yml           # Build and test on push/PR
+│   ├── cd.yml           # Deploy to AWS on merge to main
+│   ├── docker-build.yml # Build/publish Docker images
+│   └── pr-checks.yml    # PR validation and labeling
+├── labeler.yml          # Auto-labeling configuration
+└── README.md            # CI/CD documentation
+```
+
+**CI Workflow Features:**
+- Matrix build for all microservices
+- Maven dependency caching
+- Unit and integration tests
+- Code quality checks (Checkstyle, SpotBugs)
+- Docker build validation
+
+**CD Workflow Features:**
+- Push Docker images to AWS ECR
+- Deploy via AWS SSM Session Manager
+- Environment-based deployments (dev, staging, prod)
+- Automatic rollback on failure
+- Health check verification
+
+**Docker Build Workflow Features:**
+- Multi-platform builds (amd64, arm64)
+- Semantic versioning with tags
+- SBOM (Software Bill of Materials) generation
+- Trivy security scanning
+- GitHub Releases creation
+
+**Required Secrets:**
+```
+AWS_ACCOUNT_ID
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+GITHUB_TOKEN (auto-provided)
+```
 
 ---
 
@@ -490,6 +559,56 @@ mvn test -pl user-service
 | @WithMockUser | `UserControllerTest` | Test Spring Security endpoints |
 | ArchUnit | `ArchitectureTest` | Enforce architectural rules as tests |
 | BDD Style (given/when/then) | All service tests | Readable test structure |
+
+### Terraform Concepts (Phase 5)
+| Concept | Example File | Description |
+|---------|--------------|-------------|
+| Provider Configuration | `main.tf` | AWS provider with default tags |
+| Variable Validation | `variables.tf` | Input validation with regex |
+| Local Values | `main.tf` | Computed values for DRY code |
+| Data Sources | `main.tf` | Query existing AWS resources |
+| Resource Dependencies | `ec2.tf` | Implicit and explicit depends_on |
+| Dynamic Blocks | `vpc.tf`, `security_groups.tf` | Conditional resource creation |
+| Template Files | `templates/user_data.sh` | EC2 bootstrap scripts |
+| Output Values | `outputs.tf` | Export infrastructure details |
+| Secrets Manager | `rds.tf` | Secure credential storage |
+| IAM Policies | `iam.tf` | Least privilege access |
+
+### CI/CD Concepts (Phase 6)
+| Concept | Example File | Description |
+|---------|--------------|-------------|
+| Matrix Strategy | `ci.yml` | Parallel builds for multiple services |
+| Dependency Caching | All workflows | Cache Maven dependencies for speed |
+| Job Dependencies | `ci.yml` | Build common module before services |
+| Artifact Upload/Download | `ci.yml` | Share build outputs between jobs |
+| GitHub Environments | `cd.yml` | Environment-specific secrets and protection |
+| AWS ECR Login | `cd.yml` | Authenticate to container registry |
+| SSM Send Command | `cd.yml` | Execute scripts on EC2 securely |
+| Multi-platform Builds | `docker-build.yml` | Build for amd64 and arm64 |
+| SBOM Generation | `docker-build.yml` | Software Bill of Materials for security |
+| Trivy Security Scan | `docker-build.yml` | Container vulnerability scanning |
+| Conventional Commits | `pr-checks.yml` | Enforce commit message standards |
+| PR Auto-labeling | `labeler.yml` | Label PRs based on changed files |
+
+---
+
+## 🎉 Project Complete!
+
+All 6 phases have been implemented:
+
+1. **Foundation** - Multi-module Maven, Eureka, Gateway
+2. **Services** - User, Product, Order microservices
+3. **Kafka** - Event-driven architecture
+4. **Testing** - Unit, Integration, Architecture tests
+5. **Terraform** - AWS Infrastructure as Code
+6. **CI/CD** - GitHub Actions pipelines
+
+The project demonstrates:
+- Spring Boot 3.x best practices
+- PEAA (Patterns of Enterprise Application Architecture)
+- Microservices patterns (Service Discovery, API Gateway, Event-Driven)
+- AWS cloud infrastructure
+- Modern CI/CD practices
 
 ---
 

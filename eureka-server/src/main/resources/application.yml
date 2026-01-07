@@ -1,0 +1,113 @@
+# ============================================================================
+# Eureka Server Configuration
+# ============================================================================
+# PEAA Pattern: Registry
+# This server acts as the central registry for all microservices.
+# ============================================================================
+
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+  # Security configuration for Eureka dashboard
+  security:
+    user:
+      name: ${EUREKA_USERNAME:admin}
+      password: ${EUREKA_PASSWORD:admin}
+
+# ============================================================================
+# Eureka Server Settings
+# ============================================================================
+eureka:
+  instance:
+    hostname: localhost
+    # Prefer IP address over hostname for container environments
+    prefer-ip-address: true
+
+  client:
+    # Don't register with itself (standalone mode)
+    register-with-eureka: false
+    # Don't fetch registry (this IS the registry)
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+
+  server:
+    # Disable self-preservation in development (enable in production)
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:false}
+    # Time to wait before cleaning up expired instances
+    eviction-interval-timer-in-ms: 5000
+    # Response cache update interval
+    response-cache-update-interval-ms: 5000
+
+# ============================================================================
+# Actuator Endpoints (Health, Info, Metrics)
+# ============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# ============================================================================
+# Application Info
+# ============================================================================
+info:
+  app:
+    name: MicroMart Eureka Server
+    description: Service Discovery and Registry
+    version: 1.0.0
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  level:
+    root: INFO
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+
+---
+# ============================================================================
+# Development Profile
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+eureka:
+  server:
+    enable-self-preservation: false
+
+logging:
+  level:
+    root: DEBUG
+
+---
+# ============================================================================
+# Production Profile
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+eureka:
+  server:
+    enable-self-preservation: true
+    renewal-percent-threshold: 0.85
+
+logging:
+  level:
+    root: WARN
+    com.micromart: INFO

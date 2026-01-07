@@ -1,0 +1,140 @@
+# ============================================================================
+# User Service Configuration
+# ============================================================================
+# PEAA Patterns: Service Layer, Repository, Domain Model
+# ============================================================================
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+
+  # ============================================================================
+  # Database Configuration (PostgreSQL)
+  # ============================================================================
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:user_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # ============================================================================
+  # JPA Configuration
+  # ============================================================================
+  jpa:
+    hibernate:
+      ddl-auto: update  # Use 'validate' in production with Flyway/Liquibase
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Enable batch operations for performance
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+# ============================================================================
+# Eureka Client Configuration
+# ============================================================================
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}
+
+# ============================================================================
+# JWT Configuration
+# ============================================================================
+jwt:
+  secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationAndValidation2024MicroMart}
+  expiration: 86400000  # 24 hours
+
+# ============================================================================
+# OpenAPI Configuration
+# ============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# ============================================================================
+# Actuator Configuration
+# ============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: MicroMart User Service
+    description: User authentication and management microservice
+    version: 1.0.0
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  level:
+    root: INFO
+    com.micromart.user: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: ${SHOW_SQL:INFO}
+
+---
+# ============================================================================
+# Development Profile
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+---
+# ============================================================================
+# Production Profile
+# ============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    root: WARN
+    com.micromart: INFO

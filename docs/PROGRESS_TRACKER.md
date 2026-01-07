@@ -153,11 +153,32 @@
 
 ---
 
+## Git Workflow (CRITICAL - ALWAYS FOLLOW!)
+
+```
+feature/xyz → dev → PR → main
+```
+
+| Rule | Action |
+|------|--------|
+| **Working branch** | Always `dev` (NEVER push directly to main) |
+| **Before starting** | `git checkout dev && git pull origin dev` |
+| **Push to** | `dev` branch only |
+| **Merge to main** | Create Pull Request from dev → main |
+| **Feature work** | Optionally create feature/xyz from dev |
+
+**IMPORTANT:** Main branch is production-ready only. All development work happens on dev.
+
+---
+
 ## Quick Start for New Session
 
 ```
 Continue building the MicroMart project.
 Repository: https://github.com/Poojithvsc/micromart-project
+
+⚠️  IMPORTANT: Always work on dev branch, NOT main!
+    Run: git checkout dev && git pull origin dev
 
 Phase 1 is COMPLETE. Start Phase 2.
 

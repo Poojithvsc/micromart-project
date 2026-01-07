@@ -1,6 +1,6 @@
 # MicroMart - Progress Tracker
 
-> **Last Updated:** January 2025 - Phase 4 Complete
+> **Last Updated:** January 2025 - Phase 5 Complete
 > **Repository:** https://github.com/Poojithvsc/micromart-project
 
 ---
@@ -20,11 +20,10 @@ Repository: https://github.com/Poojithvsc/micromart-project
 - Run: git checkout dev && git pull origin dev
 
 Current Status:
-- Phases 1-4: ✅ COMPLETE
-- Phase 5 (Terraform/AWS): 🔲 PENDING
+- Phases 1-5: ✅ COMPLETE
 - Phase 6 (CI/CD): 🔲 PENDING
 
-Next task: Start Phase 5 (Terraform) or Phase 6 (CI/CD)
+Next task: Start Phase 6 (GitHub Actions CI/CD)
 ```
 
 ---
@@ -37,7 +36,7 @@ Next task: Start Phase 5 (Terraform) or Phase 6 (CI/CD)
 | Phase 2: Services | ✅ Complete | User, Product, Order services with full functionality |
 | Phase 3: Kafka | ✅ Complete | Event-driven architecture with producers/consumers |
 | Phase 4: Testing | ✅ Complete | Unit, Integration, Architecture tests |
-| Phase 5: Terraform | 🔲 Pending | AWS infrastructure (EC2, RDS, S3) |
+| Phase 5: Terraform | ✅ Complete | AWS infrastructure (EC2, RDS, S3) |
 | Phase 6: CI/CD | 🔲 Pending | GitHub Actions pipelines |
 
 ---
@@ -306,8 +305,8 @@ api-gateway/src/main/java/com/micromart/gateway/
 - [x] Unit Tests (JUnit 5, Mockito, AssertJ)
 - [x] Integration Tests (Testcontainers)
 - [x] Architecture Tests (ArchUnit)
-- [ ] Terraform (Phase 5)
-- [ ] AWS EC2/RDS (Phase 5)
+- [x] Terraform (Infrastructure as Code)
+- [x] AWS VPC, EC2, RDS, S3, IAM
 - [ ] GitHub Actions (Phase 6)
 
 ### Spring Boot Concepts
@@ -443,13 +442,42 @@ mvn verify -Pcoverage
 mvn test -pl user-service
 ```
 
-### Phase 5: Terraform & AWS
-- [ ] VPC with public/private subnets
-- [ ] EC2 instance for Docker
-- [ ] RDS PostgreSQL (3 databases)
-- [ ] S3 bucket for images
-- [ ] Security groups
-- [ ] IAM roles for EC2 → S3
+### Phase 5: Terraform & AWS ✅ COMPLETE
+- [x] VPC with public/private subnets
+- [x] EC2 instance for Docker
+- [x] RDS PostgreSQL with Secrets Manager
+- [x] S3 bucket for images with lifecycle policies
+- [x] Security groups (ALB, EC2, RDS, Kafka)
+- [x] IAM roles for EC2 → S3, ECR, Secrets Manager, CloudWatch
+
+**Terraform Files Created:**
+```
+terraform/
+├── main.tf              # Provider configuration, locals
+├── variables.tf         # All configurable variables with validation
+├── outputs.tf           # Useful output values
+├── vpc.tf               # VPC, subnets, IGW, NAT, route tables
+├── security_groups.tf   # Security groups for all components
+├── ec2.tf               # EC2 Docker host with CloudWatch
+├── rds.tf               # RDS PostgreSQL with parameter groups
+├── s3.tf                # S3 bucket with versioning, encryption
+├── iam.tf               # IAM roles and policies
+├── templates/
+│   └── user_data.sh     # EC2 bootstrap script (Docker, Compose)
+├── terraform.tfvars.example
+├── .gitignore
+└── README.md
+```
+
+**Deploy Commands:**
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+terraform init
+terraform plan
+terraform apply
+```
 
 ### Phase 6: CI/CD
 - [ ] GitHub Actions build workflow
@@ -490,6 +518,20 @@ mvn test -pl user-service
 | @WithMockUser | `UserControllerTest` | Test Spring Security endpoints |
 | ArchUnit | `ArchitectureTest` | Enforce architectural rules as tests |
 | BDD Style (given/when/then) | All service tests | Readable test structure |
+
+### Terraform Concepts (Phase 5)
+| Concept | Example File | Description |
+|---------|--------------|-------------|
+| Provider Configuration | `main.tf` | AWS provider with default tags |
+| Variable Validation | `variables.tf` | Input validation with regex |
+| Local Values | `main.tf` | Computed values for DRY code |
+| Data Sources | `main.tf` | Query existing AWS resources |
+| Resource Dependencies | `ec2.tf` | Implicit and explicit depends_on |
+| Dynamic Blocks | `vpc.tf`, `security_groups.tf` | Conditional resource creation |
+| Template Files | `templates/user_data.sh` | EC2 bootstrap scripts |
+| Output Values | `outputs.tf` | Export infrastructure details |
+| Secrets Manager | `rds.tf` | Secure credential storage |
+| IAM Policies | `iam.tf` | Least privilege access |
 
 ---
 

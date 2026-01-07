@@ -78,10 +78,36 @@ public class Money implements Serializable, Comparable<Money> {
     }
 
     /**
+     * Create Money with specified amount and currency code as String.
+     * Convenience method for easier usage.
+     */
+    public static Money of(BigDecimal amount, String currencyCode) {
+        if (currencyCode == null || currencyCode.isBlank()) {
+            throw new IllegalArgumentException("Currency code cannot be null or empty");
+        }
+        return of(amount, CurrencyCode.valueOf(currencyCode.toUpperCase()));
+    }
+
+    /**
      * Create Money from double value.
      */
     public static Money of(double amount, CurrencyCode currency) {
         return of(BigDecimal.valueOf(amount), currency);
+    }
+
+    /**
+     * Create Money from double value with String currency code.
+     */
+    public static Money of(double amount, String currencyCode) {
+        return of(BigDecimal.valueOf(amount), currencyCode);
+    }
+
+    /**
+     * Create Money with default currency (USD).
+     * Convenience method for simpler cases.
+     */
+    public static Money of(BigDecimal amount) {
+        return of(amount, CurrencyCode.USD);
     }
 
     /**

@@ -407,7 +407,7 @@ class UserServiceImplTest {
             assertThatThrownBy(() -> userService.deleteUser(999L))
                     .isInstanceOf(ResourceNotFoundException.class);
 
-            verify(userRepository, never()).delete(any());
+            verify(userRepository, never()).delete(any(User.class));
         }
     }
 

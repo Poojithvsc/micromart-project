@@ -1,6 +1,6 @@
 # MicroMart - Progress Tracker
 
-> **Last Updated:** January 2025 - Phase 6 Complete
+> **Last Updated:** January 2025 - All Phases Complete + Bug Fixes Applied
 > **Repository:** https://github.com/Poojithvsc/micromart-project
 
 ---
@@ -21,9 +21,10 @@ Repository: https://github.com/Poojithvsc/micromart-project
 
 Current Status:
 - Phases 1-6: ✅ COMPLETE
+- Bug Fixes: ✅ ALL COMPILATION ERRORS RESOLVED
 - All phases implemented!
 
-The project is feature-complete. Review and customize as needed.
+The project compiles successfully and is feature-complete. Review and customize as needed.
 ```
 
 ---
@@ -533,6 +534,89 @@ GITHUB_TOKEN (auto-provided)
 1. **S3 Health Indicator**: Will fail if S3 bucket doesn't exist (expected in local dev)
 2. **Kafka**: Requires Kafka broker running for full functionality
 3. **Security**: Services trust API Gateway for auth; add defense-in-depth for production
+
+---
+
+## 🔧 Bug Fixes Applied (January 2025)
+
+The following compilation errors were identified and fixed to ensure the project compiles successfully:
+
+### 1. Missing Spring Security Dependency
+**Issue:** `product-service` and `order-service` used `@PreAuthorize` but lacked Spring Security dependency.
+**Fix:** Added `spring-boot-starter-security` and `spring-security-test` to both services' `pom.xml`.
+
+### 2. Lombok @SuperBuilder for Entity Inheritance
+**Issue:** Entity builders couldn't access inherited fields (e.g., `.id()`) because Lombok's `@Builder` doesn't include parent class fields.
+**Fix:** Changed all entities and base classes to use `@SuperBuilder`:
+- `BaseEntity.java` → `@SuperBuilder` + `@NoArgsConstructor`
+- `AuditableEntity.java` → `@SuperBuilder` + `@NoArgsConstructor`
+- `User.java`, `Product.java`, `Category.java`, `Inventory.java`, `Order.java`, `OrderItem.java` → `@SuperBuilder`
+
+### 3. Money.of() Method Signature
+**Issue:** Tests passed `String` currency code but `Money.of()` only accepted `CurrencyCode` enum.
+**Fix:** Added overloaded factory methods in `Money.java`:
+```java
+public static Money of(BigDecimal amount, String currencyCode)
+public static Money of(double amount, String currencyCode)
+public static Money of(BigDecimal amount) // defaults to USD
+```
+
+### 4. PageResponse.of() Method Signature
+**Issue:** Controllers called `PageResponse.of(Page<T>)` but only `of(List, int, int, long)` existed.
+**Fix:** Added `of(Page<T>)` method in `PageResponse.java` that delegates to `from(Page<T>)`.
+
+### 5. ProductSpecification Type Issues
+**Issue:** `CriteriaBuilder.between()` failed due to untyped `Path<Object>` for price queries.
+**Fix:** Explicitly typed `Path<BigDecimal>` in `ProductSpecification.java`:
+```java
+jakarta.persistence.criteria.Path<BigDecimal> priceAmount = root.get("price").get("amount");
+```
+
+### 6. Missing Inventory Methods
+**Issue:** Tests referenced `hasStock(int)` and `isOutOfStock()` methods that didn't exist.
+**Fix:** Added methods to `Inventory.java`:
+```java
+public boolean hasStock(int amount) { return getAvailableQuantity() >= amount; }
+public boolean isOutOfStock() { return getAvailableQuantity() <= 0; }
+```
+
+### 7. Missing Order Methods and Fields
+**Issue:** Tests referenced `markPaymentReceived()`, `getItemCount()`, and `cancelledAt` field.
+**Fix:** Added to `Order.java`:
+- `cancelledAt` field with `@Column`
+- `markPaymentReceived()` method (alias for `markPaymentCompleted()`)
+- `getItemCount()` method that sums item quantities
+- Updated `cancel()` to set `cancelledAt` timestamp
+
+### 8. Address zipCode Alias
+**Issue:** Tests used `zipCode()` builder method but class had `postalCode`.
+**Fix:** Added custom builder classes with `zipCode()` alias in:
+- `Address.java` (domain value object)
+- `AddressRequest.java` (DTO)
+
+Also added `getZipCode()` getter alias in `Address.java`.
+
+### 9. Ambiguous Repository Delete Method
+**Issue:** `verify(userRepository, never()).delete(any())` was ambiguous (could match `delete(User)` or `delete(Specification<User>)`).
+**Fix:** Changed to `delete(any(User.class))` in `UserServiceImplTest.java`.
+
+### 10. ArchUnit API Method
+**Issue:** `mayBeAccessedByAnyLayer()` method doesn't exist in ArchUnit API.
+**Fix:** Removed the constraint in `ArchitectureTest.java` - Domain layer is accessible by default without explicit rule.
+
+---
+
+### Summary of Modified Files
+
+| Category | Files Modified |
+|----------|----------------|
+| **POMs** | `product-service/pom.xml`, `order-service/pom.xml` |
+| **Base Classes** | `BaseEntity.java`, `AuditableEntity.java` |
+| **Entities** | `User.java`, `Product.java`, `Category.java`, `Inventory.java`, `Order.java`, `OrderItem.java` |
+| **Value Objects** | `Money.java`, `Address.java` |
+| **DTOs** | `PageResponse.java`, `AddressRequest.java` |
+| **Specifications** | `ProductSpecification.java` |
+| **Tests** | `UserServiceImplTest.java`, `ArchitectureTest.java` |
 
 ---
 

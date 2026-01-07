@@ -3,6 +3,7 @@ package com.micromart.product.domain;
 import com.micromart.common.domain.AuditableEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Inventory Entity - Stock management for products.
@@ -24,7 +25,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Inventory extends AuditableEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -165,5 +166,24 @@ public class Inventory extends AuditableEntity {
      */
     public boolean canReserve(int amount) {
         return getAvailableQuantity() >= amount;
+    }
+
+    /**
+     * Check if the inventory has at least the specified quantity in stock.
+     *
+     * @param amount quantity to check
+     * @return true if available quantity is at least the specified amount
+     */
+    public boolean hasStock(int amount) {
+        return getAvailableQuantity() >= amount;
+    }
+
+    /**
+     * Check if the inventory is out of stock.
+     *
+     * @return true if available quantity is zero or less
+     */
+    public boolean isOutOfStock() {
+        return getAvailableQuantity() <= 0;
     }
 }

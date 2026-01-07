@@ -4,6 +4,7 @@ import com.micromart.common.domain.AuditableEntity;
 import com.micromart.user.domain.valueobject.Email;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -40,7 +41,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class User extends AuditableEntity {
 
     @Column(name = "username", nullable = false, unique = true, length = 50)

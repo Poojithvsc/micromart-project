@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  * Request DTO for address input.
  */
 @Data
-@Builder
+@Builder(builderClassName = "AddressRequestBuilder")
 @NoArgsConstructor
 @AllArgsConstructor
 public class AddressRequest {
@@ -34,4 +34,17 @@ public class AddressRequest {
     @NotBlank(message = "Country is required")
     @Size(max = 100, message = "Country cannot exceed 100 characters")
     private String country;
+
+    /**
+     * Custom builder with zipCode alias for postalCode.
+     */
+    public static class AddressRequestBuilder {
+        /**
+         * Alias for postalCode() method - supports both naming conventions.
+         */
+        public AddressRequestBuilder zipCode(String zipCode) {
+            this.postalCode = zipCode;
+            return this;
+        }
+    }
 }

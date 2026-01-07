@@ -4,6 +4,7 @@ import com.micromart.common.domain.AuditableEntity;
 import com.micromart.product.domain.valueobject.Money;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Product Entity - Domain Model with Money Value Object.
@@ -22,7 +23,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Product extends AuditableEntity {
 
     @Column(name = "name", nullable = false, length = 255)

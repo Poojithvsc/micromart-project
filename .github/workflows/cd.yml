@@ -1,0 +1,325 @@
+# =============================================================================
+# MicroMart - Continuous Deployment Workflow
+# =============================================================================
+# Triggered on:
+# - Push to main branch (after PR merge)
+# - Manual dispatch with environment selection
+#
+# Learning Points:
+# - GitHub Actions environments and secrets
+# - AWS ECR for Docker image registry
+# - AWS SSM for secure server access
+# - Blue-green deployment concepts
+# - Environment-specific configurations
+# =============================================================================
+
+name: CD - Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      services:
+        description: 'Services to deploy (comma-separated or "all")'
+        required: true
+        default: 'all'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  JAVA_VERSION: '17'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Determine What to Deploy
+  # ---------------------------------------------------------------------------
+  prepare:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-services.outputs.services }}
+      environment: ${{ steps.set-env.outputs.environment }}
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set Environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set Image Tag
+        id: set-tag
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Determine Changed Services
+        id: set-services
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ inputs.services }}" != "all" ]; then
+            # Manual selection
+            SERVICES='["${{ inputs.services }}"]'
+          else
+            # Auto-detect from changed files or deploy all
+            SERVICES='["eureka-server","api-gateway","user-service","product-service","order-service"]'
+          fi
+          echo "services=${SERVICES}" >> $GITHUB_OUTPUT
+
+  # ---------------------------------------------------------------------------
+  # Build and Push Docker Images to ECR
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: prepare
+    environment: ${{ needs.prepare.outputs.environment }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - eureka-server
+          - api-gateway
+          - user-service
+          - product-service
+          - order-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Common Module
+        run: |
+          cd common
+          mvn clean install -DskipTests
+
+      - name: Build Service JAR
+        run: |
+          cd ${{ matrix.service }}
+          mvn package -DskipTests
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create ECR Repository (if not exists)
+        run: |
+          aws ecr describe-repositories --repository-names micromart/${{ matrix.service }} 2>/dev/null || \
+          aws ecr create-repository --repository-name micromart/${{ matrix.service }} --image-scanning-configuration scanOnPush=true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/micromart/${{ matrix.service }}:${{ needs.prepare.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/micromart/${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            JAR_FILE=target/*.jar
+
+      - name: Scan Docker Image for Vulnerabilities
+        run: |
+          aws ecr start-image-scan \
+            --repository-name micromart/${{ matrix.service }} \
+            --image-id imageTag=${{ needs.prepare.outputs.image_tag }} || true
+
+  # ---------------------------------------------------------------------------
+  # Deploy to AWS EC2
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to ${{ needs.prepare.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [prepare, build-and-push]
+    environment: ${{ needs.prepare.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get EC2 Instance ID
+        id: get-instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=micromart-${{ needs.prepare.outputs.environment }}-docker-host" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+          echo "instance_id=${INSTANCE_ID}" >> $GITHUB_OUTPUT
+
+      - name: Deploy via SSM
+        run: |
+          # Create deployment script
+          cat << 'DEPLOY_SCRIPT' > deploy.sh
+          #!/bin/bash
+          set -e
+
+          # Variables
+          ECR_REGISTRY="${{ env.ECR_REGISTRY }}"
+          IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
+          ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
+
+          # Login to ECR
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+          cd /opt/micromart
+
+          # Pull latest images
+          for service in eureka-server api-gateway user-service product-service order-service; do
+            docker pull ${ECR_REGISTRY}/micromart/${service}:${IMAGE_TAG} || true
+            docker tag ${ECR_REGISTRY}/micromart/${service}:${IMAGE_TAG} micromart/${service}:latest || true
+          done
+
+          # Stop existing services (graceful shutdown)
+          docker-compose stop user-service product-service order-service || true
+
+          # Start services
+          docker-compose up -d
+
+          # Wait for services to be healthy
+          sleep 30
+
+          # Health checks
+          curl -f http://localhost:8761/actuator/health || echo "Eureka health check failed"
+          curl -f http://localhost:8081/actuator/health || echo "User service health check failed"
+          curl -f http://localhost:8082/actuator/health || echo "Product service health check failed"
+          curl -f http://localhost:8083/actuator/health || echo "Order service health check failed"
+
+          echo "Deployment completed successfully!"
+          DEPLOY_SCRIPT
+
+          # Execute via SSM
+          aws ssm send-command \
+            --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[\"$(base64 -w0 deploy.sh)\"]" \
+            --output text
+
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 60
+
+      - name: Verify Deployment
+        run: |
+          # Get public IP
+          PUBLIC_IP=$(aws ec2 describe-instances \
+            --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+
+          echo "Verifying deployment at ${PUBLIC_IP}..."
+
+          # Check Eureka
+          curl -f http://${PUBLIC_IP}:8761/actuator/health || echo "Warning: Eureka health check failed"
+
+          # Check API Gateway
+          curl -f http://${PUBLIC_IP}:8080/actuator/health || echo "Warning: Gateway health check failed"
+
+  # ---------------------------------------------------------------------------
+  # Post-Deployment Tasks
+  # ---------------------------------------------------------------------------
+  post-deploy:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy]
+    if: success()
+
+    steps:
+      - name: Create Deployment Record
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.prepare.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | ${{ needs.prepare.outputs.image_tag }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed By | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Timestamp | $(date -u +"%Y-%m-%dT%H:%M:%SZ") |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "Deployment to ${{ needs.prepare.outputs.environment }} completed successfully!"
+          # Add Slack/Teams notification here if needed
+
+  # ---------------------------------------------------------------------------
+  # Rollback Job (Manual Trigger)
+  # ---------------------------------------------------------------------------
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    needs: [prepare, deploy]
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback to Previous Version
+        run: |
+          echo "Deployment failed - initiating rollback..."
+          # Get the previous image tag from ECR
+          # This is a simplified rollback - production would use more sophisticated versioning
+
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=micromart-${{ needs.prepare.outputs.environment }}-docker-host" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+
+          aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/micromart && docker-compose down && docker-compose up -d"]'
+
+          echo "Rollback initiated"

@@ -1,0 +1,15 @@
+I want you to create a project for me. This project should be built in a way that the end result should make me understand how to build an entire project from start to finish (probably a full  
+  stack project). I want this project using Java, API,  springboot, kafka, docker, database, s3 bucket maybe, postgresql, unit test cases, terraform, cloud(i have a whizlabs subscription if      
+  that helps, i want to be able to Launch EC2 and RDS Instance and connect to RDS Instance from EC2 Instance using Terraform),  etc. include 2 or preferrably 3 microservices so that i can also   
+  learn how kafka can be used to communicate within microservices and anything else that i dont know about and need to learn in a full stack development. at the end, i want to be able to
+  understand how to successfully  integrate all technologies like . More importantly, I want this project to follow as guidelines the "Patterns of Enterprise Application architecture" by Martin  
+  Fowler and follow all of the principles and patterns so that i can see how to use them in an actual application. Also use the springboot concepts like: Core Stereotypes@Controller, @Service,   
+  @Repository, @Component, @Entity, @Embeddable1.7.2 Spring Data JPAJpaRepository, @Query, @EntityGraph, @Transactional, Specification, @ManyToOne/@OneToMany1.7.3 Dependency
+  InjectionConstructor injection, @Autowired, @Qualifier, @Primary, @Profile, @Conditional*1.7.4 Spring MVC@GetMapping, @RequestBody, @Valid, @ExceptionHandler, @ControllerAdvice1.7.5
+  Configurationapplication.yml, @Value, @ConfigurationProperties, profiles1.7.6 SecuritySecurityFilterChain, @PreAuthorize, @Secured, JWT/OAuth21.7.7 Spring Cloud@EnableEurekaClient,
+  @FeignClient, Circuit Breaker, Spring Cloud Gateway, Stream1.7.8 EventsApplicationEvent, @EventListener, @TransactionalEventListener, @Async1.7.9 ActuatorHealth checks, metrics, custom
+  indicators
+  and owler's LayerSpring StereotypesConceptsPresentation@Controller, @RestController, Spring MVC (@GetMapping, @RequestBody, @Valid, @ExceptionHandler)ServiceApplication@Service,
+  @Transactional, Events (@EventListener, @Async)Domain@Entity, @Embeddable, domain objects (though Spring is agnostic here)Data SourceInfrastructure@Repository, Spring Data JPA (JpaRepository,  
+  @Query, Specification)
+  MAKE SURE THAT THE PROJECT USES AS MANY DIFFERENT PARTS OF TECHNOLOGIES AS POSSIBLE FOR ME TO LEARN THEM !!! 

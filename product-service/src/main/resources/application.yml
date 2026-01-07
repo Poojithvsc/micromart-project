@@ -36,11 +36,27 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-# S3 Configuration
+# Kafka Topics
+kafka:
+  topics:
+    order-events: order-events
+    inventory-events: inventory-events
+
+# AWS Configuration
 aws:
+  # Credentials (use IAM roles in production, env vars for local)
+  access-key-id: ${AWS_ACCESS_KEY_ID:}
+  secret-access-key: ${AWS_SECRET_ACCESS_KEY:}
   s3:
     bucket: ${S3_BUCKET:micromart-products}
     region: ${AWS_REGION:us-east-1}
+    path-prefix: products
+    max-file-size: 5242880  # 5MB
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
 
 eureka:
   client:

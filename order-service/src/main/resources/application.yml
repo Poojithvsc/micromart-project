@@ -48,6 +48,11 @@ eureka:
   instance:
     prefer-ip-address: true
 
+# Kafka Topics
+kafka:
+  topics:
+    order-events: order-events
+
 # Circuit Breaker Configuration
 resilience4j:
   circuitbreaker:
@@ -66,3 +71,14 @@ management:
 logging:
   level:
     com.micromart.order: DEBUG
+    # Feign client logging (set to DEBUG to see request/response)
+    com.micromart.order.client: DEBUG
+
+# Feign client configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+        loggerLevel: BASIC

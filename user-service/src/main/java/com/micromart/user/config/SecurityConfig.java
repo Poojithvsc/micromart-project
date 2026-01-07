@@ -1,14 +1,22 @@
 package com.micromart.user.config;
 
+import com.micromart.user.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Security Configuration for User Service.
@@ -21,18 +29,24 @@ import org.springframework.security.web.SecurityFilterChain;
  * - Stateless session management (for JWT)
  * - Public and protected endpoints
  * - CSRF disabled for REST API
- * - Password encoder bean
+ * - JWT authentication filter
+ * - Authentication provider and manager
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final UserDetailsService userDetailsService;
 
     /**
      * Configure security filter chain.
      * <p>
      * Spring Security: SecurityFilterChain
      * Defines security rules for HTTP requests.
+     * Adds JWT filter before UsernamePasswordAuthenticationFilter.
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,6 +56,10 @@ public class SecurityConfig {
                 // Stateless session (JWT-based)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Set authentication provider
+                .authenticationProvider(authenticationProvider())
+                // Add JWT filter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // Authorization rules
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
@@ -55,6 +73,31 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    /**
+     * Authentication Provider using DaoAuthenticationProvider.
+     * <p>
+     * Connects UserDetailsService with password encoder for authentication.
+     */
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    /**
+     * Authentication Manager bean.
+     * <p>
+     * Required for programmatic authentication in AuthService.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authConfig
+    ) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
 
     /**

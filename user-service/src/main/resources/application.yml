@@ -60,7 +60,8 @@ eureka:
 # ============================================================================
 jwt:
   secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationAndValidation2024MicroMart}
-  expiration: 86400000  # 24 hours
+  expiration: 86400000  # 24 hours (access token)
+  refresh-expiration: 604800000  # 7 days (refresh token)
 
 # ============================================================================
 # OpenAPI Configuration

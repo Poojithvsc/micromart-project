@@ -114,4 +114,13 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
      */
     @Query("SELECT u FROM User u WHERE u.accountNonLocked = false")
     List<User> findLockedAccounts();
+
+    /**
+     * Count active (enabled) users.
+     * Used by health indicator.
+     *
+     * @return Number of active users
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true")
+    long countActiveUsers();
 }

@@ -1,0 +1,46 @@
+# =============================================================================
+# User Service Test Configuration
+# =============================================================================
+# This configuration is used for unit and integration tests.
+# Uses H2 in-memory database by default, or Testcontainers for integration tests.
+# =============================================================================
+
+spring:
+  application:
+    name: user-service-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  # Disable Eureka in tests
+  cloud:
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+# JWT Configuration for tests
+jwt:
+  secret: test-secret-key-for-jwt-signing-must-be-at-least-256-bits-long-for-hs256
+  expiration: 3600000  # 1 hour
+
+# Logging
+logging:
+  level:
+    com.micromart: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG

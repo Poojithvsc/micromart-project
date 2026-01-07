@@ -1,5 +1,6 @@
 package com.micromart.order.client;
 
+import com.micromart.order.client.dto.ProductDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,13 +18,18 @@ import java.math.BigDecimal;
  * - Inter-service communication
  * - Service discovery integration
  * - Declarative REST client pattern
+ * - Circuit breaker fallback
  */
-@FeignClient(name = "product-service", fallback = ProductClientFallback.class)
+@FeignClient(
+        name = "product-service",
+        fallback = ProductClientFallback.class,
+        path = "/products"
+)
 public interface ProductClient {
 
-    @GetMapping("/products/{id}/price")
-    BigDecimal getProductPrice(@PathVariable Long id);
+    @GetMapping("/{id}")
+    ProductDto getProduct(@PathVariable("id") Long id);
 
-    @GetMapping("/products/{id}/available")
-    boolean isProductAvailable(@PathVariable Long id);
+    @GetMapping("/{id}/price")
+    BigDecimal getProductPrice(@PathVariable("id") Long id);
 }

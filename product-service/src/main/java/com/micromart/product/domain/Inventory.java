@@ -76,9 +76,10 @@ public class Inventory extends AuditableEntity {
 
     /**
      * Check if reorder is needed.
+     * Returns true when available quantity is at or below the reorder level.
      */
     public boolean needsReorder() {
-        return quantity <= reorderLevel;
+        return getAvailableQuantity() <= reorderLevel;
     }
 
     /**

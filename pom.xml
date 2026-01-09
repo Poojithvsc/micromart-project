@@ -43,15 +43,15 @@
     <!-- ====================================================================== -->
     <properties>
         <!-- Java Version -->
-        <java.version>17</java.version>
+        <java.version>24</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Spring Boot & Spring Cloud Versions -->
-        <spring-boot.version>3.2.4</spring-boot.version>
-        <spring-cloud.version>2023.0.1</spring-cloud.version>
+        <spring-boot.version>3.4.4</spring-boot.version>
+        <spring-cloud.version>2024.0.0</spring-cloud.version>
 
         <!-- Database -->
         <postgresql.version>42.7.2</postgresql.version>
@@ -73,7 +73,7 @@
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 
         <!-- Utilities -->
-        <lombok.version>1.18.32</lombok.version>
+        <lombok.version>1.18.40</lombok.version>
         <commons-lang3.version>3.14.0</commons-lang3.version>
 
         <!-- Testing -->
@@ -305,6 +305,7 @@
                             </path>
                         </annotationProcessorPaths>
                         <compilerArgs>
+                            <arg>-parameters</arg>
                             <arg>-Amapstruct.defaultComponentModel=spring</arg>
                             <arg>-Amapstruct.unmappedTargetPolicy=IGNORE</arg>
                         </compilerArgs>

@@ -63,6 +63,7 @@ public class UserController {
         UserResponse response = userMapper.toResponse(user);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
+                .header("Location", "/users/" + user.getId())
                 .body(ApiResponse.success(response, "User created successfully"));
     }
 
@@ -121,10 +122,10 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete user (Admin only)")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         log.info("REST request to delete user: {}", id);
         userService.deleteUser(id);
-        return ResponseEntity.ok(ApiResponse.success("User deleted successfully"));
+        return ResponseEntity.noContent().build();
     }
 
     /**

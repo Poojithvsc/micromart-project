@@ -27,7 +27,7 @@ public class ProductMapper {
                 .description(product.getDescription())
                 .sku(product.getSku())
                 .price(product.getPrice() != null ? product.getPrice().getAmount() : null)
-                .currency(product.getPrice() != null ? product.getPrice().getCurrency().name() : null)
+                .currency(product.getPrice() != null ? product.getPrice().getCurrency() : null)
                 .imageUrl(product.getImageUrl())
                 .active(product.isActive())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)

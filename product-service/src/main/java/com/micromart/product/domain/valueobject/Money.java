@@ -46,7 +46,22 @@ public class Money implements Serializable, Comparable<Money> {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "currency", nullable = false, length = 3)
+    @Getter(AccessLevel.NONE)
     private CurrencyCode currency;
+
+    /**
+     * Get the currency code as a String.
+     */
+    public String getCurrency() {
+        return currency.name();
+    }
+
+    /**
+     * Get the currency code enum.
+     */
+    public CurrencyCode getCurrencyCode() {
+        return currency;
+    }
 
     /**
      * Supported currencies.
@@ -73,6 +88,9 @@ public class Money implements Serializable, Comparable<Money> {
         }
         if (currency == null) {
             throw new IllegalArgumentException("Currency cannot be null");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
         }
         return new Money(amount, currency);
     }
@@ -148,17 +166,24 @@ public class Money implements Serializable, Comparable<Money> {
     /**
      * Subtract Money value.
      *
-     * @throws IllegalArgumentException if currencies don't match
+     * @throws IllegalArgumentException if currencies don't match or result would be negative
      */
     public Money subtract(Money other) {
         validateSameCurrency(other);
-        return new Money(this.amount.subtract(other.amount), this.currency);
+        BigDecimal result = this.amount.subtract(other.amount);
+        if (result.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Result cannot be negative");
+        }
+        return new Money(result, this.currency);
     }
 
     /**
      * Multiply by a factor.
      */
     public Money multiply(BigDecimal factor) {
+        if (factor.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Multiplier cannot be negative");
+        }
         return new Money(this.amount.multiply(factor), this.currency);
     }
 
@@ -166,6 +191,9 @@ public class Money implements Serializable, Comparable<Money> {
      * Multiply by integer quantity.
      */
     public Money multiply(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("Multiplier cannot be negative");
+        }
         return multiply(BigDecimal.valueOf(quantity));
     }
 

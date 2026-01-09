@@ -127,7 +127,7 @@ class MoneyTest {
             // When/Then
             assertThatThrownBy(() -> usd.add(eur))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("currency");
+                    .hasMessageContainingAll("Currency", "mismatch");
         }
 
         @Test

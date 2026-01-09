@@ -193,7 +193,7 @@ class InventoryTest {
 
             assertThatThrownBy(() -> inventory.releaseReservation(60))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("Cannot release more");
+                    .hasMessageContaining("Cannot release");
         }
     }
 

@@ -5,6 +5,7 @@ import com.micromart.order.domain.valueobject.Address;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import lombok.AccessLevel;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -58,7 +59,16 @@ public class Order extends AuditableEntity {
     private Address shippingAddress;
 
     @Column(name = "total_amount", precision = 19, scale = 2)
+    @Getter(AccessLevel.NONE)
     private BigDecimal totalAmount;
+
+    /**
+     * Get the total amount of the order.
+     * Returns BigDecimal.ZERO if the order is empty or total hasn't been calculated.
+     */
+    public BigDecimal getTotalAmount() {
+        return totalAmount != null ? totalAmount : BigDecimal.ZERO;
+    }
 
     @Column(name = "currency", length = 3)
     @Builder.Default

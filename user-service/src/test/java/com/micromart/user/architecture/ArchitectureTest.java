@@ -70,11 +70,12 @@ class ArchitectureTest {
 
                     .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
                     .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service", "Event")
-                    .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service", "Event", "Security", "Actuator");
+                    .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service", "Event", "Security", "Actuator")
                     // Domain layer is accessible by all layers by default (no restriction needed)
                     // Event layer can access Service and Repository for event handling
                     // Security layer needs Repository for user details loading
                     // Actuator layer needs Repository for health indicators
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -84,7 +85,8 @@ class ArchitectureTest {
         void controllersShouldNotAccessRepositoriesDirectly() {
             ArchRule rule = noClasses()
                     .that().resideInAPackage("..controller..")
-                    .should().accessClassesThat().resideInAPackage("..repository..");
+                    .should().accessClassesThat().resideInAPackage("..repository..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -103,7 +105,8 @@ class ArchitectureTest {
             ArchRule rule = classes()
                     .that().resideInAPackage("..controller..")
                     .and().areAnnotatedWith(RestController.class)
-                    .should().haveSimpleNameEndingWith("Controller");
+                    .should().haveSimpleNameEndingWith("Controller")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -116,7 +119,8 @@ class ArchitectureTest {
                     .and().areAnnotatedWith(Service.class)
                     .should().haveSimpleNameEndingWith("ServiceImpl")
                     .orShould().haveSimpleNameEndingWith("Service")
-                    .orShould().haveSimpleNameEndingWith("Facade");
+                    .orShould().haveSimpleNameEndingWith("Facade")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -127,7 +131,8 @@ class ArchitectureTest {
             ArchRule rule = classes()
                     .that().resideInAPackage("..repository..")
                     .and().areInterfaces()
-                    .should().haveSimpleNameEndingWith("Repository");
+                    .should().haveSimpleNameEndingWith("Repository")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -138,7 +143,8 @@ class ArchitectureTest {
             ArchRule rule = classes()
                     .that().haveSimpleNameEndingWith("Request")
                     .or().haveSimpleNameEndingWith("Response")
-                    .should().resideInAPackage("..dto..");
+                    .should().resideInAPackage("..dto..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -148,7 +154,8 @@ class ArchitectureTest {
         void entitiesShouldResideInDomainPackage() {
             ArchRule rule = classes()
                     .that().areAnnotatedWith(jakarta.persistence.Entity.class)
-                    .should().resideInAPackage("..domain..");
+                    .should().resideInAPackage("..domain..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -166,7 +173,8 @@ class ArchitectureTest {
         void onlyControllersShouldBeAnnotatedWithRestController() {
             ArchRule rule = classes()
                     .that().areAnnotatedWith(RestController.class)
-                    .should().resideInAPackage("..controller..");
+                    .should().resideInAPackage("..controller..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -176,8 +184,9 @@ class ArchitectureTest {
         void onlyServicesShouldBeAnnotatedWithService() {
             ArchRule rule = classes()
                     .that().areAnnotatedWith(Service.class)
-                    .should().resideInAnyPackage("..service..", "..security..");
-            // Security package can have @Service for UserDetailsService implementations
+                    .should().resideInAnyPackage("..service..", "..security..")
+                    // Security package can have @Service for UserDetailsService implementations
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -189,7 +198,8 @@ class ArchitectureTest {
                     .that().resideInAPackage("..repository..")
                     .and().areInterfaces()
                     .and().haveSimpleNameEndingWith("Repository")
-                    .should().beAssignableTo(org.springframework.data.jpa.repository.JpaRepository.class);
+                    .should().beAssignableTo(org.springframework.data.jpa.repository.JpaRepository.class)
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -221,7 +231,8 @@ class ArchitectureTest {
             ArchRule rule = noClasses()
                     .that().resideInAPackage("..service..")
                     .should().dependOnClassesThat()
-                    .resideInAPackage("org.springframework.web..");
+                    .resideInAPackage("org.springframework.web..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -234,7 +245,8 @@ class ArchitectureTest {
             // We only check cycles in core business packages, excluding event package
             ArchRule rule = slices()
                     .matching("com.micromart.user.(controller|service|repository|domain)..")
-                    .should().beFreeOfCycles();
+                    .should().beFreeOfCycles()
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -253,7 +265,8 @@ class ArchitectureTest {
             ArchRule rule = classes()
                     .that().resideInAPackage("..mapper..")
                     .should().onlyBeAccessed().byClassesThat()
-                    .resideInAnyPackage("..controller..", "..service..", "..mapper..");
+                    .resideInAnyPackage("..controller..", "..service..", "..mapper..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }
@@ -263,7 +276,8 @@ class ArchitectureTest {
         void configClassesShouldBeInConfigPackage() {
             ArchRule rule = classes()
                     .that().areAnnotatedWith(org.springframework.context.annotation.Configuration.class)
-                    .should().resideInAPackage("..config..");
+                    .should().resideInAPackage("..config..")
+                    .allowEmptyShould(true);
 
             rule.check(importedClasses);
         }

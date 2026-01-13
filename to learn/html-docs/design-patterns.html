@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Design Patterns</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link active">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Design Patterns</span>
+            </div>
+
+            <h1>Design Patterns</h1>
+            <p class="lead">
+                MicroMart implements patterns from three sources: PEAA (Enterprise Architecture),
+                DDD (Domain-Driven Design), and GoF (Gang of Four).
+            </p>
+
+            <h2>Pattern Categories</h2>
+
+            <div class="card-grid">
+                <div class="card service-card user-service">
+                    <h3>PEAA Patterns</h3>
+                    <p>Patterns of Enterprise Application Architecture by Martin Fowler</p>
+                    <ul>
+                        <li>Repository</li>
+                        <li>Service Layer</li>
+                        <li>DTO</li>
+                        <li>Domain Model</li>
+                        <li>Gateway</li>
+                    </ul>
+                </div>
+
+                <div class="card service-card product-service">
+                    <h3>DDD Patterns</h3>
+                    <p>Domain-Driven Design by Eric Evans</p>
+                    <ul>
+                        <li>Entity</li>
+                        <li>Value Object</li>
+                        <li>Aggregate</li>
+                        <li>Bounded Context</li>
+                    </ul>
+                </div>
+
+                <div class="card service-card order-service">
+                    <h3>GoF Patterns</h3>
+                    <p>Gang of Four Design Patterns</p>
+                    <ul>
+                        <li>Factory Method</li>
+                        <li>Strategy</li>
+                        <li>Observer</li>
+                        <li>Builder</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>Repository Pattern (PEAA)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Mediates between the domain and data mapping layers, providing a collection-like interface for accessing domain objects.</p>
+            </div>
+
+            <pre><code><span class="keyword">public interface</span> <span class="class-name">UserRepository</span> <span class="keyword">extends</span> <span class="class-name">JpaRepository</span>&lt;<span class="class-name">User</span>, <span class="class-name">Long</span>&gt; {
+    <span class="class-name">Optional</span>&lt;<span class="class-name">User</span>&gt; findByUsername(<span class="class-name">String</span> username);
+    <span class="class-name">Optional</span>&lt;<span class="class-name">User</span>&gt; findByEmailValue(<span class="class-name">String</span> email);
+    <span class="keyword">boolean</span> existsByUsername(<span class="class-name">String</span> username);
+}
+</code></pre>
+
+            <p><strong>Benefits:</strong></p>
+            <ul>
+                <li>Decouples business logic from data access</li>
+                <li>Enables switching databases without changing services</li>
+                <li>Provides a collection-like interface for data</li>
+                <li>Makes testing easier with mock repositories</li>
+            </ul>
+
+            <h2>Service Layer Pattern (PEAA)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Defines an application's boundary with a layer of services that establishes a set of available operations.</p>
+            </div>
+
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">OrderService</span> {
+    <span class="keyword">private final</span> <span class="class-name">OrderRepository</span> orderRepository;
+    <span class="keyword">private final</span> <span class="class-name">ProductClient</span> productClient;
+    <span class="keyword">private final</span> <span class="class-name">InventoryClient</span> inventoryClient;
+
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(<span class="class-name">CreateOrderRequest</span> request) {
+        <span class="comment">// 1. Validate</span>
+        <span class="comment">// 2. Reserve inventory</span>
+        <span class="comment">// 3. Calculate total</span>
+        <span class="comment">// 4. Save order</span>
+        <span class="comment">// 5. Publish event</span>
+    }
+}
+</code></pre>
+
+            <p><strong>Benefits:</strong></p>
+            <ul>
+                <li>Encapsulates business logic in one place</li>
+                <li>Coordinates multiple repositories and external services</li>
+                <li>Manages transactions</li>
+                <li>Provides clear API for controllers</li>
+            </ul>
+
+            <h2>DTO Pattern (PEAA)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>An object that carries data between processes to reduce the number of method calls.</p>
+            </div>
+
+            <pre><code><span class="comment">// Request DTO - for input</span>
+<span class="keyword">public record</span> <span class="class-name">CreateUserRequest</span>(
+    <span class="annotation">@NotBlank</span> <span class="class-name">String</span> username,
+    <span class="annotation">@Email</span> <span class="class-name">String</span> email,
+    <span class="annotation">@Size</span>(min = <span class="number">8</span>) <span class="class-name">String</span> password
+) {}
+
+<span class="comment">// Response DTO - for output</span>
+<span class="keyword">public record</span> <span class="class-name">UserResponse</span>(
+    <span class="class-name">Long</span> id,
+    <span class="class-name">String</span> username,
+    <span class="class-name">String</span> email,
+    <span class="class-name">Set</span>&lt;<span class="class-name">String</span>&gt; roles
+) {}
+</code></pre>
+
+            <p><strong>Benefits:</strong></p>
+            <ul>
+                <li>Decouples API contract from domain model</li>
+                <li>Hides internal entity structure</li>
+                <li>Enables versioning of API</li>
+                <li>Contains validation annotations</li>
+            </ul>
+
+            <h2>Value Object (DDD)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>A small, immutable object that represents a concept by its attributes, not identity.</p>
+            </div>
+
+            <pre><code><span class="annotation">@Embeddable</span>
+<span class="keyword">public final class</span> <span class="class-name">Money</span> <span class="keyword">implements</span> <span class="class-name">Comparable</span>&lt;<span class="class-name">Money</span>&gt; {
+    <span class="keyword">private final</span> <span class="class-name">BigDecimal</span> amount;
+    <span class="keyword">private final</span> <span class="class-name">CurrencyCode</span> currency;
+
+    <span class="comment">// Factory method (no public constructor)</span>
+    <span class="keyword">public static</span> <span class="class-name">Money</span> of(<span class="class-name">BigDecimal</span> amount, <span class="class-name">CurrencyCode</span> currency) {
+        <span class="class-name">Objects</span>.requireNonNull(amount);
+        <span class="class-name">Objects</span>.requireNonNull(currency);
+        <span class="keyword">if</span> (amount.compareTo(<span class="class-name">BigDecimal</span>.ZERO) < <span class="number">0</span>) {
+            <span class="keyword">throw new</span> <span class="class-name">IllegalArgumentException</span>(<span class="string">"Amount cannot be negative"</span>);
+        }
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(amount, currency);
+    }
+
+    <span class="comment">// Immutable operations return new instances</span>
+    <span class="keyword">public</span> <span class="class-name">Money</span> add(<span class="class-name">Money</span> other) {
+        ensureSameCurrency(other);
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(<span class="keyword">this</span>.amount.add(other.amount), <span class="keyword">this</span>.currency);
+    }
+
+    <span class="comment">// Equality by value</span>
+    <span class="annotation">@Override</span>
+    <span class="keyword">public boolean</span> equals(<span class="class-name">Object</span> obj) {
+        <span class="keyword">if</span> (!(<span class="keyword">obj instanceof</span> <span class="class-name">Money</span> other)) <span class="keyword">return false</span>;
+        <span class="keyword">return</span> amount.compareTo(other.amount) == <span class="number">0</span> && currency == other.currency;
+    }
+}
+</code></pre>
+
+            <p><strong>Characteristics:</strong></p>
+            <ul>
+                <li><strong>Immutable</strong> - no setters, all fields final</li>
+                <li><strong>Self-validating</strong> - factory method validates</li>
+                <li><strong>Equality by value</strong> - not by identity</li>
+                <li><strong>No side effects</strong> - operations return new objects</li>
+            </ul>
+
+            <h2>Entity (DDD)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>An object defined primarily by its identity, rather than its attributes.</p>
+            </div>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">User</span> <span class="keyword">extends</span> <span class="class-name">AuditableEntity</span> {
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;  <span class="comment">// Identity</span>
+
+    <span class="comment">// State changes over time</span>
+    <span class="keyword">private boolean</span> enabled;
+    <span class="keyword">private int</span> failedLoginAttempts;
+    <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> lastLoginAt;
+
+    <span class="comment">// Equality by ID</span>
+    <span class="annotation">@Override</span>
+    <span class="keyword">public boolean</span> equals(<span class="class-name">Object</span> obj) {
+        <span class="keyword">if</span> (!(<span class="keyword">obj instanceof</span> <span class="class-name">User</span> other)) <span class="keyword">return false</span>;
+        <span class="keyword">return</span> id != <span class="keyword">null</span> && id.equals(other.id);
+    }
+}
+</code></pre>
+
+            <table>
+                <tr>
+                    <th>Entity</th>
+                    <th>Value Object</th>
+                </tr>
+                <tr>
+                    <td>Has unique identity (ID)</td>
+                    <td>No identity, defined by attributes</td>
+                </tr>
+                <tr>
+                    <td>Mutable</td>
+                    <td>Immutable</td>
+                </tr>
+                <tr>
+                    <td>Equality by ID</td>
+                    <td>Equality by value</td>
+                </tr>
+                <tr>
+                    <td>Example: User, Order</td>
+                    <td>Example: Money, Email, Address</td>
+                </tr>
+            </table>
+
+            <h2>Aggregate (DDD)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>A cluster of entities and value objects with a defined boundary. Access is only through the root.</p>
+            </div>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Order</span> {  <span class="comment">// Aggregate Root</span>
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@OneToMany</span>(cascade = CascadeType.ALL, orphanRemoval = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">OrderItem</span>&gt; items;  <span class="comment">// Part of aggregate</span>
+
+    <span class="comment">// All changes go through the root</span>
+    <span class="keyword">public void</span> addItem(<span class="class-name">OrderItem</span> item) {
+        items.add(item);
+        item.setOrder(<span class="keyword">this</span>);
+        recalculateTotal();
+    }
+
+    <span class="keyword">public void</span> removeItem(<span class="class-name">OrderItem</span> item) {
+        items.remove(item);
+        recalculateTotal();
+    }
+}
+</code></pre>
+
+            <p><strong>Rules:</strong></p>
+            <ul>
+                <li>Only aggregate root is accessed from outside</li>
+                <li>All changes go through the root</li>
+                <li>Root ensures consistency of the whole aggregate</li>
+                <li>Other entities reference aggregates by ID only</li>
+            </ul>
+
+            <h2>Factory Method (GoF)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Creates objects without specifying the exact class to instantiate.</p>
+            </div>
+
+            <pre><code><span class="keyword">public class</span> <span class="class-name">Money</span> {
+    <span class="comment">// Private constructor</span>
+    <span class="keyword">private</span> Money(<span class="class-name">BigDecimal</span> amount, <span class="class-name">CurrencyCode</span> currency) { }
+
+    <span class="comment">// Factory methods</span>
+    <span class="keyword">public static</span> <span class="class-name">Money</span> of(<span class="class-name">BigDecimal</span> amount, <span class="class-name">CurrencyCode</span> currency) {
+        <span class="comment">// Validation here</span>
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(amount, currency);
+    }
+
+    <span class="keyword">public static</span> <span class="class-name">Money</span> usd(<span class="class-name">BigDecimal</span> amount) {
+        <span class="keyword">return</span> of(amount, <span class="class-name">CurrencyCode</span>.USD);
+    }
+
+    <span class="keyword">public static</span> <span class="class-name">Money</span> zero(<span class="class-name">CurrencyCode</span> currency) {
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(<span class="class-name">BigDecimal</span>.ZERO, currency);
+    }
+}
+</code></pre>
+
+            <h2>Strategy Pattern (GoF)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Defines a family of algorithms and makes them interchangeable.</p>
+            </div>
+
+            <pre><code><span class="comment">// Strategy interface</span>
+<span class="keyword">public interface</span> <span class="class-name">NotificationService</span> {
+    <span class="keyword">void</span> sendNotification(<span class="class-name">String</span> recipient, <span class="class-name">String</span> message);
+}
+
+<span class="comment">// Concrete strategies</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">EmailNotificationService</span> <span class="keyword">implements</span> <span class="class-name">NotificationService</span> {
+    <span class="keyword">public void</span> sendNotification(<span class="class-name">String</span> recipient, <span class="class-name">String</span> message) {
+        <span class="comment">// Send email</span>
+    }
+}
+
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">SmsNotificationService</span> <span class="keyword">implements</span> <span class="class-name">NotificationService</span> {
+    <span class="keyword">public void</span> sendNotification(<span class="class-name">String</span> recipient, <span class="class-name">String</span> message) {
+        <span class="comment">// Send SMS</span>
+    }
+}
+
+<span class="comment">// Context - uses strategy</span>
+<span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">UserNotificationFacade</span> {
+    <span class="keyword">private final</span> <span class="class-name">NotificationService</span> notificationService;
+
+    <span class="keyword">public void</span> notifyUserRegistered(<span class="class-name">User</span> user) {
+        notificationService.sendNotification(user.getEmail(), <span class="string">"Welcome!"</span>);
+    }
+}
+</code></pre>
+
+            <h2>Observer Pattern (GoF)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Defines a one-to-many dependency so when one object changes, all dependents are notified.</p>
+            </div>
+
+            <pre><code><span class="comment">// Publisher</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventPublisher</span> {
+    <span class="keyword">private final</span> <span class="class-name">ApplicationEventPublisher</span> publisher;
+
+    <span class="keyword">public void</span> publishUserRegistered(<span class="class-name">User</span> user) {
+        publisher.publishEvent(<span class="keyword">new</span> <span class="class-name">UserRegisteredEvent</span>(user));
+    }
+}
+
+<span class="comment">// Observer (Listener)</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventListener</span> {
+    <span class="annotation">@EventListener</span>
+    <span class="keyword">public void</span> onUserRegistered(<span class="class-name">UserRegisteredEvent</span> event) {
+        log.info(<span class="string">"User registered: {}"</span>, event.getUsername());
+        <span class="comment">// Send welcome email</span>
+    }
+}
+</code></pre>
+
+            <h2>Circuit Breaker (Resilience)</h2>
+            <div class="info-box info">
+                <div class="info-box-title">Purpose</div>
+                <p>Prevents cascade failures by failing fast when a service is down.</p>
+            </div>
+
+            <pre><code><span class="annotation">@FeignClient</span>(
+    name = <span class="string">"product-service"</span>,
+    fallback = <span class="class-name">ProductClientFallback</span>.<span class="keyword">class</span>
+)
+<span class="keyword">public interface</span> <span class="class-name">ProductClient</span> {
+    <span class="annotation">@GetMapping</span>(<span class="string">"/products/{id}"</span>)
+    <span class="class-name">ProductDto</span> getProduct(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id);
+}
+
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">ProductClientFallback</span> <span class="keyword">implements</span> <span class="class-name">ProductClient</span> {
+    <span class="keyword">public</span> <span class="class-name">ProductDto</span> getProduct(<span class="class-name">Long</span> id) {
+        <span class="keyword">throw new</span> <span class="class-name">ServiceUnavailableException</span>(<span class="string">"Product service down"</span>);
+    }
+}
+</code></pre>
+
+            <h2>Pattern Quick Reference</h2>
+            <table>
+                <tr>
+                    <th>Pattern</th>
+                    <th>Category</th>
+                    <th>Main Benefit</th>
+                </tr>
+                <tr><td>Repository</td><td>PEAA</td><td>Decouple data access</td></tr>
+                <tr><td>Service Layer</td><td>PEAA</td><td>Encapsulate business logic</td></tr>
+                <tr><td>DTO</td><td>PEAA</td><td>Decouple API from domain</td></tr>
+                <tr><td>Value Object</td><td>DDD</td><td>Immutable domain concepts</td></tr>
+                <tr><td>Entity</td><td>DDD</td><td>Persistent identity</td></tr>
+                <tr><td>Aggregate</td><td>DDD</td><td>Consistency boundary</td></tr>
+                <tr><td>Factory Method</td><td>GoF</td><td>Controlled creation</td></tr>
+                <tr><td>Strategy</td><td>GoF</td><td>Interchangeable algorithms</td></tr>
+                <tr><td>Observer</td><td>GoF</td><td>Loose coupling</td></tr>
+                <tr><td>Circuit Breaker</td><td>Resilience</td><td>Fault tolerance</td></tr>
+            </table>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

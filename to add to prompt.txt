@@ -1,3 +1,19 @@
 now give me an LLD document of what this project is about, all the services it provides, what it does, etc.
 I also would like you to give me exaclidraw diagrams of the entire project and its functionality. I want 4 diagrams with increasing levels of complexity and depth with the level 1 diagram being the highest level explanation that is very basic and easy to understand without any specific technical knowledge of particular technologies. also include diagrams for data flow, entity relationship, high level architecture, java layers, spring annotations, etc and any more that i might not have mentioned but you think i need to learn !!
 along with all this, build any other supporting documents you think i need to understand the entire project completely and that would make me also be able to present and explain all of this work to other people ! 
+
+also make some html documents explaining the working of this entire project including high level architecture to documents     
+  giving a better and detailed explanition fo the technologies used in this project. split the documents so that the maximum token limit reached problem    
+  doesnt occur ! 
+
+  .
+  .
+  .
+  .
+
+  create a new folder in this folder named "to learn". give me an LLD document of what this project is about, all the services it provides, what it does, etc. In this same folder "to learn", create       
+  another folder called "diagrams" and in that I also would like you to give me exaclidraw diagrams of the entire project and its functionality. I want 4 diagrams with increasing levels of complexity     
+  and depth with the level 1 diagram being the highest level explanation that is very basic and easy to understand without any specific technical knowledge of particular technologies. also include        
+  diagrams for data flow, entity relationship, high level architecture, java layers, spring annotations, etc and any more that i might not have mentioned but you think i need to learn !!                  
+  along with all this, build any other supporting documents you think i need to understand the entire project completely and that would make me also be able to present and explain all of this work to     
+  other people ! 

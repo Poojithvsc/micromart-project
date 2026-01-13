@@ -1,0 +1,308 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "MicroMart Documentation",
+  "elements": [
+    {
+      "type": "text",
+      "x": 350,
+      "y": 20,
+      "text": "TRANSACTION & DATA FLOW\nHow @Transactional Works with JPA",
+      "fontSize": 28,
+      "fontFamily": 1,
+      "textAlign": "center"
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 100,
+      "text": "SCENARIO: Creating an Order (Multiple Database Operations)",
+      "fontSize": 16,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 140,
+      "width": 200,
+      "height": 80,
+      "backgroundColor": "#d0bfff",
+      "strokeColor": "#7950f2"
+    },
+    {
+      "type": "text",
+      "x": 70,
+      "y": 150,
+      "text": "@Service\n@Transactional\nOrderServiceImpl",
+      "fontSize": 14,
+      "textAlign": "center"
+    },
+    {
+      "type": "text",
+      "x": 280,
+      "y": 140,
+      "text": "Spring creates PROXY around service\nProxy manages transaction lifecycle",
+      "fontSize": 12
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 260,
+      "width": 850,
+      "height": 300,
+      "backgroundColor": "#e7f5ff",
+      "strokeColor": "#1864ab",
+      "strokeStyle": "dashed"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 270,
+      "text": "TRANSACTION BOUNDARY (All or Nothing)",
+      "fontSize": 14,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 70,
+      "y": 300,
+      "width": 180,
+      "height": 50,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 90,
+      "y": 315,
+      "text": "1. BEGIN TRANSACTION",
+      "fontSize": 12
+    },
+    {
+      "type": "arrow",
+      "x": 160,
+      "y": 355,
+      "width": 0,
+      "height": 30,
+      "points": [[0, 0], [0, 30]]
+    },
+    {
+      "type": "rectangle",
+      "x": 70,
+      "y": 390,
+      "width": 180,
+      "height": 50,
+      "backgroundColor": "#fff9db",
+      "strokeColor": "#f08c00"
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 400,
+      "text": "2. orderRepo.save(order)\nINSERT INTO orders...",
+      "fontSize": 11
+    },
+    {
+      "type": "arrow",
+      "x": 255,
+      "y": 415,
+      "width": 50,
+      "height": 0,
+      "points": [[0, 0], [50, 0]]
+    },
+    {
+      "type": "rectangle",
+      "x": 310,
+      "y": 390,
+      "width": 180,
+      "height": 50,
+      "backgroundColor": "#fff9db",
+      "strokeColor": "#f08c00"
+    },
+    {
+      "type": "text",
+      "x": 320,
+      "y": 400,
+      "text": "3. CascadeType.ALL\nINSERT INTO order_items...",
+      "fontSize": 11
+    },
+    {
+      "type": "arrow",
+      "x": 495,
+      "y": 415,
+      "width": 50,
+      "height": 0,
+      "points": [[0, 0], [50, 0]]
+    },
+    {
+      "type": "rectangle",
+      "x": 550,
+      "y": 390,
+      "width": 180,
+      "height": 50,
+      "backgroundColor": "#fff9db",
+      "strokeColor": "#f08c00"
+    },
+    {
+      "type": "text",
+      "x": 560,
+      "y": 400,
+      "text": "4. inventoryRepo.save()\nUPDATE inventory...",
+      "fontSize": 11
+    },
+    {
+      "type": "arrow",
+      "x": 640,
+      "y": 445,
+      "width": 0,
+      "height": 30,
+      "points": [[0, 0], [0, 30]]
+    },
+    {
+      "type": "rectangle",
+      "x": 550,
+      "y": 480,
+      "width": 180,
+      "height": 50,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 590,
+      "y": 495,
+      "text": "5. COMMIT (Success)",
+      "fontSize": 12
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 590,
+      "text": "IF ANY STEP FAILS:",
+      "fontSize": 14,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 620,
+      "width": 200,
+      "height": 40,
+      "backgroundColor": "#ffe3e3",
+      "strokeColor": "#e03131"
+    },
+    {
+      "type": "text",
+      "x": 80,
+      "y": 630,
+      "text": "ROLLBACK Everything!",
+      "fontSize": 12
+    },
+    {
+      "type": "text",
+      "x": 270,
+      "y": 630,
+      "text": "- Order INSERT undone\n- OrderItem INSERTs undone\n- Inventory UPDATE undone",
+      "fontSize": 12
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 700,
+      "text": "OPTIMISTIC LOCKING (@Version)",
+      "fontSize": 16,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 740,
+      "width": 200,
+      "height": 100,
+      "backgroundColor": "#c5f6fa",
+      "strokeColor": "#1098ad"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 750,
+      "text": "User A reads:\nInventory(id=1, qty=100,\nversion=1)",
+      "fontSize": 11
+    },
+    {
+      "type": "rectangle",
+      "x": 280,
+      "y": 740,
+      "width": 200,
+      "height": 100,
+      "backgroundColor": "#c5f6fa",
+      "strokeColor": "#1098ad"
+    },
+    {
+      "type": "text",
+      "x": 290,
+      "y": 750,
+      "text": "User B reads:\nInventory(id=1, qty=100,\nversion=1)",
+      "fontSize": 11
+    },
+    {
+      "type": "arrow",
+      "x": 150,
+      "y": 845,
+      "width": 0,
+      "height": 40,
+      "points": [[0, 0], [0, 40]]
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 890,
+      "width": 200,
+      "height": 60,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 905,
+      "text": "A saves: qty=95\nversion becomes 2\nSUCCESS!",
+      "fontSize": 11
+    },
+    {
+      "type": "arrow",
+      "x": 380,
+      "y": 845,
+      "width": 0,
+      "height": 40,
+      "points": [[0, 0], [0, 40]]
+    },
+    {
+      "type": "rectangle",
+      "x": 280,
+      "y": 890,
+      "width": 200,
+      "height": 60,
+      "backgroundColor": "#ffe3e3",
+      "strokeColor": "#e03131"
+    },
+    {
+      "type": "text",
+      "x": 290,
+      "y": 900,
+      "text": "B tries to save: qty=95\nExpects version=1, but it's 2\nOptimisticLockException!",
+      "fontSize": 11
+    },
+    {
+      "type": "text",
+      "x": 510,
+      "y": 920,
+      "text": "B must RETRY with fresh data",
+      "fontSize": 12,
+      "fontFamily": 1
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}

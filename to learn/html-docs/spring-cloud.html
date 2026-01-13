@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Spring Cloud Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link active">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Spring Cloud</span>
+            </div>
+
+            <h1>Spring Cloud</h1>
+            <p class="lead">
+                Spring Cloud provides tools for building distributed systems. It handles
+                service discovery, API gateway, circuit breakers, and inter-service communication.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Spring Cloud 2024.0.0</span>
+                <span class="tech-item">Spring Cloud Gateway</span>
+                <span class="tech-item">Netflix Eureka</span>
+                <span class="tech-item">OpenFeign</span>
+                <span class="tech-item">Resilience4j</span>
+            </div>
+
+            <h2>Spring Cloud Components in MicroMart</h2>
+
+            <div class="card-grid">
+                <div class="card service-card gateway">
+                    <h3>API Gateway</h3>
+                    <p>Single entry point for all requests. Handles routing, authentication, and rate limiting.</p>
+                    <span class="badge warning">Spring Cloud Gateway</span>
+                </div>
+
+                <div class="card service-card eureka">
+                    <h3>Service Discovery</h3>
+                    <p>Services register and discover each other dynamically without hardcoded URLs.</p>
+                    <span class="badge" style="background: #fff5f5; color: #e03131;">Netflix Eureka</span>
+                </div>
+
+                <div class="card service-card user-service">
+                    <h3>Declarative REST Client</h3>
+                    <p>Call other services using interfaces. No manual HTTP code needed.</p>
+                    <span class="badge purple">OpenFeign</span>
+                </div>
+
+                <div class="card service-card order-service">
+                    <h3>Fault Tolerance</h3>
+                    <p>Circuit breakers, retries, and fallbacks for resilient communication.</p>
+                    <span class="badge success">Resilience4j</span>
+                </div>
+            </div>
+
+            <h2>Service Discovery (Eureka)</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">What is Service Discovery?</div>
+                <p>
+                    In microservices, services can run on different servers, scale up/down, and move around.
+                    Service discovery is how services find each other without hardcoding IP addresses.
+                </p>
+            </div>
+
+            <h3>How Eureka Works</h3>
+            <div class="architecture-box">
+                <ol style="text-align: left; max-width: 600px; margin: 0 auto;">
+                    <li style="margin: 10px 0;">
+                        <strong>Eureka Server</strong> starts and waits for registrations
+                    </li>
+                    <li style="margin: 10px 0;">
+                        <strong>User Service</strong> starts, registers with Eureka: "I'm user-service at 192.168.1.10:8081"
+                    </li>
+                    <li style="margin: 10px 0;">
+                        <strong>Product Service</strong> registers: "I'm product-service at 192.168.1.11:8082"
+                    </li>
+                    <li style="margin: 10px 0;">
+                        <strong>Order Service</strong> needs Product Service, asks Eureka: "Where is product-service?"
+                    </li>
+                    <li style="margin: 10px 0;">
+                        <strong>Eureka</strong> responds: "product-service is at 192.168.1.11:8082"
+                    </li>
+                    <li style="margin: 10px 0;">
+                        <strong>Services send heartbeats</strong> every 30 seconds to stay registered
+                    </li>
+                </ol>
+            </div>
+
+            <h3>Eureka Server Setup</h3>
+            <pre><code><span class="comment">// EurekaServerApplication.java</span>
+<span class="annotation">@SpringBootApplication</span>
+<span class="annotation">@EnableEurekaServer</span>
+<span class="keyword">public class</span> <span class="class-name">EurekaServerApplication</span> {
+    <span class="keyword">public static void</span> main(<span class="class-name">String</span>[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">EurekaServerApplication</span>.<span class="keyword">class</span>, args);
+    }
+}
+</code></pre>
+
+            <pre><code><span class="comment"># eureka-server/application.yml</span>
+server:
+  port: 8761
+
+eureka:
+  client:
+    register-with-eureka: false  <span class="comment"># Server doesn't register with itself</span>
+    fetch-registry: false
+  server:
+    wait-time-in-ms-when-sync-empty: 0
+</code></pre>
+
+            <h3>Eureka Client (Service Registration)</h3>
+            <pre><code><span class="comment"># user-service/application.yml</span>
+spring:
+  application:
+    name: user-service  <span class="comment"># This name is used for discovery</span>
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+</code></pre>
+
+            <div class="info-box success">
+                <div class="info-box-title">Eureka Dashboard</div>
+                <p>
+                    Access <code>http://localhost:8761</code> to see all registered services,
+                    their instances, and health status.
+                </p>
+            </div>
+
+            <h2>API Gateway</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">What is an API Gateway?</div>
+                <p>
+                    The API Gateway is the single entry point for all client requests. Instead of
+                    clients knowing about multiple service URLs, they only talk to the gateway.
+                </p>
+            </div>
+
+            <h3>Gateway Benefits</h3>
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><strong>Routing</strong></td>
+                    <td>Forward requests to appropriate services based on path</td>
+                </tr>
+                <tr>
+                    <td><strong>Load Balancing</strong></td>
+                    <td>Distribute requests across multiple service instances</td>
+                </tr>
+                <tr>
+                    <td><strong>Authentication</strong></td>
+                    <td>Validate JWT tokens before forwarding requests</td>
+                </tr>
+                <tr>
+                    <td><strong>Rate Limiting</strong></td>
+                    <td>Prevent abuse by limiting requests per client</td>
+                </tr>
+                <tr>
+                    <td><strong>CORS</strong></td>
+                    <td>Handle cross-origin requests centrally</td>
+                </tr>
+                <tr>
+                    <td><strong>Circuit Breaker</strong></td>
+                    <td>Fail fast when downstream services are unavailable</td>
+                </tr>
+            </table>
+
+            <h3>Gateway Configuration</h3>
+            <pre><code><span class="comment"># api-gateway/application.yml</span>
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true  <span class="comment"># Auto-discover routes from Eureka</span>
+
+      routes:
+        <span class="comment"># User Service Routes</span>
+        - id: user-service
+          uri: lb://user-service  <span class="comment"># lb:// = load-balanced via Eureka</span>
+          predicates:
+            - Path=/api/users/**, /api/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCB
+                fallbackUri: forward:/fallback/user
+
+        <span class="comment"># Product Service Routes</span>
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**, /api/categories/**, /api/inventory/**
+
+        <span class="comment"># Order Service Routes</span>
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+</code></pre>
+
+            <h3>Route Predicates</h3>
+            <p>Predicates determine which requests match a route:</p>
+
+            <pre><code>predicates:
+  - Path=/api/users/**           <span class="comment"># Match by path</span>
+  - Method=GET,POST              <span class="comment"># Match by HTTP method</span>
+  - Header=X-Request-Id, \d+     <span class="comment"># Match by header</span>
+  - Query=category, electronics  <span class="comment"># Match by query param</span>
+  - After=2024-01-01T00:00:00Z   <span class="comment"># Match after date</span>
+</code></pre>
+
+            <h3>Gateway Filters</h3>
+            <p>Filters modify requests and responses:</p>
+
+            <pre><code>filters:
+  - AddRequestHeader=X-Gateway, true
+  - RemoveRequestHeader=Cookie
+  - RewritePath=/api/(?&lt;segment&gt;.*), /${segment}
+  - name: RequestRateLimiter
+    args:
+      redis-rate-limiter.replenishRate: 10
+      redis-rate-limiter.burstCapacity: 20
+  - name: Retry
+    args:
+      retries: 3
+      statuses: BAD_GATEWAY
+</code></pre>
+
+            <h3>Custom JWT Filter</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtAuthenticationFilter</span> <span class="keyword">implements</span> <span class="class-name">GatewayFilter</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">JwtTokenProvider</span> tokenProvider;
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">Mono</span>&lt;<span class="class-name">Void</span>&gt; filter(<span class="class-name">ServerWebExchange</span> exchange, <span class="class-name">GatewayFilterChain</span> chain) {
+        <span class="class-name">String</span> token = extractToken(exchange.getRequest());
+
+        <span class="keyword">if</span> (token != <span class="keyword">null</span> && tokenProvider.validateToken(token)) {
+            <span class="class-name">String</span> userId = tokenProvider.getUserId(token);
+
+            <span class="comment">// Add user info to headers for downstream services</span>
+            <span class="class-name">ServerHttpRequest</span> request = exchange.getRequest().mutate()
+                .header(<span class="string">"X-User-Id"</span>, userId)
+                .build();
+
+            <span class="keyword">return</span> chain.filter(exchange.mutate().request(request).build());
+        }
+
+        <span class="keyword">return</span> chain.filter(exchange);
+    }
+}
+</code></pre>
+
+            <h2>OpenFeign (Declarative REST Client)</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">What is Feign?</div>
+                <p>
+                    Feign lets you call REST APIs using interfaces. You declare the interface,
+                    Feign creates the implementation. No manual HTTP code needed!
+                </p>
+            </div>
+
+            <h3>Feign Client Definition</h3>
+            <pre><code><span class="annotation">@FeignClient</span>(
+    name = <span class="string">"product-service"</span>,           <span class="comment">// Eureka service name</span>
+    fallback = <span class="class-name">ProductClientFallback</span>.<span class="keyword">class</span>  <span class="comment">// Fallback on failure</span>
+)
+<span class="keyword">public interface</span> <span class="class-name">ProductClient</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products/{id}"</span>)
+    <span class="class-name">ProductDto</span> getProduct(<span class="annotation">@PathVariable</span>(<span class="string">"id"</span>) <span class="class-name">Long</span> id);
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products"</span>)
+    <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; getProducts(<span class="annotation">@RequestParam</span>(<span class="string">"ids"</span>) <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids);
+
+    <span class="annotation">@PostMapping</span>(<span class="string">"/api/inventory/{productId}/reserve"</span>)
+    <span class="keyword">void</span> reserveStock(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> productId,
+                      <span class="annotation">@RequestBody</span> <span class="class-name">ReserveRequest</span> request);
+}
+</code></pre>
+
+            <h3>Using the Feign Client</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">ProductClient</span> productClient;  <span class="comment">// Injected by Spring</span>
+
+    <span class="keyword">public void</span> createOrder(<span class="class-name">CreateOrderRequest</span> request) {
+        <span class="comment">// Feign handles the HTTP call!</span>
+        <span class="class-name">ProductDto</span> product = productClient.getProduct(request.productId());
+
+        <span class="comment">// Use product data...</span>
+    }
+}
+</code></pre>
+
+            <h3>Feign Configuration</h3>
+            <pre><code><span class="comment"># application.yml</span>
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 5000
+            logger-level: BASIC
+          product-service:  <span class="comment"># Service-specific config</span>
+            connect-timeout: 3000
+            read-timeout: 10000
+</code></pre>
+
+            <h2>Circuit Breaker (Resilience4j)</h2>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Why Circuit Breakers?</div>
+                <p>
+                    If Product Service is down and Order Service keeps calling it, requests pile up,
+                    threads get exhausted, and Order Service crashes too. This is called <strong>cascading failure</strong>.
+                    Circuit breakers prevent this by failing fast.
+                </p>
+            </div>
+
+            <h3>Circuit Breaker States</h3>
+            <div class="architecture-box">
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; align-items: center;">
+                    <div class="service-box" style="background: #b2f2bb; color: #2f9e44;">
+                        <strong>CLOSED</strong><br>
+                        <small>Normal operation</small>
+                    </div>
+                    <span>-- failures exceed threshold --></span>
+                    <div class="service-box" style="background: #fff5f5; color: #e03131;">
+                        <strong>OPEN</strong><br>
+                        <small>Fail immediately</small>
+                    </div>
+                    <span>-- wait time expires --></span>
+                    <div class="service-box" style="background: #fff9db; color: #f08c00;">
+                        <strong>HALF-OPEN</strong><br>
+                        <small>Test if recovered</small>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Configuration</h3>
+            <pre><code><span class="comment"># application.yml</span>
+resilience4j:
+  circuitbreaker:
+    instances:
+      productService:
+        sliding-window-size: 10           <span class="comment"># Last 10 calls</span>
+        failure-rate-threshold: 50        <span class="comment"># Open if 50% fail</span>
+        wait-duration-in-open-state: 30s  <span class="comment"># Stay open 30 seconds</span>
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-rate-threshold: 100     <span class="comment"># Consider slow calls as failures</span>
+        slow-call-duration-threshold: 2s
+
+  retry:
+    instances:
+      productService:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+
+  timelimiter:
+    instances:
+      productService:
+        timeout-duration: 3s
+</code></pre>
+
+            <h3>Using Circuit Breaker</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> {
+
+    <span class="annotation">@CircuitBreaker</span>(name = <span class="string">"productService"</span>, fallbackMethod = <span class="string">"getProductFallback"</span>)
+    <span class="annotation">@Retry</span>(name = <span class="string">"productService"</span>)
+    <span class="annotation">@TimeLimiter</span>(name = <span class="string">"productService"</span>)
+    <span class="keyword">public</span> <span class="class-name">ProductDto</span> getProduct(<span class="class-name">Long</span> id) {
+        <span class="keyword">return</span> productClient.getProduct(id);
+    }
+
+    <span class="comment">// Fallback method - same signature + exception</span>
+    <span class="keyword">public</span> <span class="class-name">ProductDto</span> getProductFallback(<span class="class-name">Long</span> id, <span class="class-name">Exception</span> ex) {
+        log.warn(<span class="string">"Product service unavailable, returning cached data"</span>);
+        <span class="keyword">return</span> cacheService.getCachedProduct(id);
+    }
+}
+</code></pre>
+
+            <h2>Load Balancing</h2>
+            <p>
+                Spring Cloud LoadBalancer distributes requests across service instances:
+            </p>
+
+            <pre><code><span class="comment">// The lb:// prefix enables load balancing</span>
+uri: lb://product-service
+
+<span class="comment">// Or with @LoadBalanced RestTemplate</span>
+<span class="annotation">@Bean</span>
+<span class="annotation">@LoadBalanced</span>
+<span class="keyword">public</span> <span class="class-name">RestTemplate</span> restTemplate() {
+    <span class="keyword">return new</span> <span class="class-name">RestTemplate</span>();
+}
+
+<span class="comment">// Usage - service name instead of URL</span>
+restTemplate.getForObject(<span class="string">"http://product-service/api/products/1"</span>, <span class="class-name">ProductDto</span>.<span class="keyword">class</span>);
+</code></pre>
+
+            <h2>Configuration Summary</h2>
+
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Port</th>
+                    <th>Dependencies</th>
+                </tr>
+                <tr>
+                    <td>Eureka Server</td>
+                    <td>8761</td>
+                    <td><code>spring-cloud-starter-netflix-eureka-server</code></td>
+                </tr>
+                <tr>
+                    <td>API Gateway</td>
+                    <td>8080</td>
+                    <td><code>spring-cloud-starter-gateway</code></td>
+                </tr>
+                <tr>
+                    <td>Eureka Client</td>
+                    <td>-</td>
+                    <td><code>spring-cloud-starter-netflix-eureka-client</code></td>
+                </tr>
+                <tr>
+                    <td>Feign Client</td>
+                    <td>-</td>
+                    <td><code>spring-cloud-starter-openfeign</code></td>
+                </tr>
+                <tr>
+                    <td>Circuit Breaker</td>
+                    <td>-</td>
+                    <td><code>spring-cloud-starter-circuitbreaker-resilience4j</code></td>
+                </tr>
+            </table>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

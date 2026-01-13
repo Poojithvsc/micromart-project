@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Local Development Setup</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="local-setup.html" class="nav-link active">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h1>Local Development Setup</h1>
+            <p class="lead">
+                Step-by-step guide to run the entire MicroMart system on your local machine.
+            </p>
+
+            <h2>Prerequisites</h2>
+            <table>
+                <tr><th>Tool</th><th>Version</th><th>Purpose</th></tr>
+                <tr><td>Java JDK</td><td>24+</td><td>Application runtime</td></tr>
+                <tr><td>Maven</td><td>3.9+</td><td>Build tool</td></tr>
+                <tr><td>Docker</td><td>Latest</td><td>Run databases, Kafka</td></tr>
+                <tr><td>Git</td><td>Latest</td><td>Version control</td></tr>
+                <tr><td>IDE</td><td>IntelliJ/VS Code</td><td>Development</td></tr>
+            </table>
+
+            <h2>Step 1: Start Infrastructure with Docker</h2>
+            <pre><code><span class="comment"># Create docker-compose.yml in project root</span>
+version: '3.8'
+
+services:
+  <span class="comment"># PostgreSQL for each service</span>
+  postgres-user:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  postgres-product:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+
+  postgres-order:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+
+  <span class="comment"># Zookeeper (required by Kafka)</span>
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  <span class="comment"># Kafka</span>
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  <span class="comment"># Redis (optional - for caching)</span>
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+</code></pre>
+
+            <pre><code><span class="comment"># Start all infrastructure</span>
+docker-compose up -d
+
+<span class="comment"># Verify containers are running</span>
+docker ps
+</code></pre>
+
+            <h2>Step 2: Build the Project</h2>
+            <pre><code><span class="comment"># Navigate to project root</span>
+cd "D:\Tinku anna project\project after PEAA and springboot"
+
+<span class="comment"># Build all modules</span>
+mvn clean install -DskipTests
+
+<span class="comment"># If build succeeds, you'll see:</span>
+<span class="comment"># [INFO] BUILD SUCCESS</span>
+</code></pre>
+
+            <h2>Step 3: Start Services (In Order!)</h2>
+            <div class="info-box warning">
+                <div class="info-box-title">Startup Order Matters!</div>
+                <p>Services must start in this specific order for proper registration and discovery.</p>
+            </div>
+
+            <h3>Terminal 1: Eureka Server (Start First!)</h3>
+            <pre><code>cd eureka-server
+mvn spring-boot:run
+
+<span class="comment"># Wait for: "Started EurekaServerApplication in X seconds"</span>
+<span class="comment"># Open http://localhost:8761 to see Eureka dashboard</span>
+</code></pre>
+
+            <h3>Terminal 2: API Gateway</h3>
+            <pre><code>cd api-gateway
+mvn spring-boot:run
+
+<span class="comment"># Wait for it to register with Eureka</span>
+</code></pre>
+
+            <h3>Terminal 3: User Service</h3>
+            <pre><code>cd user-service
+mvn spring-boot:run -Dspring.profiles.active=dev
+</code></pre>
+
+            <h3>Terminal 4: Product Service</h3>
+            <pre><code>cd product-service
+mvn spring-boot:run -Dspring.profiles.active=dev
+</code></pre>
+
+            <h3>Terminal 5: Order Service</h3>
+            <pre><code>cd order-service
+mvn spring-boot:run -Dspring.profiles.active=dev
+</code></pre>
+
+            <h2>Step 4: Verify Everything Works</h2>
+
+            <h3>Check Eureka Dashboard</h3>
+            <pre><code><span class="comment"># Open in browser:</span>
+http://localhost:8761
+
+<span class="comment"># You should see all services registered:</span>
+<span class="comment"># - API-GATEWAY</span>
+<span class="comment"># - USER-SERVICE</span>
+<span class="comment"># - PRODUCT-SERVICE</span>
+<span class="comment"># - ORDER-SERVICE</span>
+</code></pre>
+
+            <h3>Test API Endpoints</h3>
+            <pre><code><span class="comment"># Health check</span>
+curl http://localhost:8080/actuator/health
+
+<span class="comment"># Register a user</span>
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "Password123!",
+    "firstName": "Test",
+    "lastName": "User"
+  }'
+
+<span class="comment"># Login and get JWT token</span>
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "Password123!"
+  }'
+
+<span class="comment"># Save the accessToken from response!</span>
+</code></pre>
+
+            <h2>Development Workflow</h2>
+            <ol>
+                <li>Make code changes in your IDE</li>
+                <li>Service auto-restarts if using spring-boot-devtools</li>
+                <li>Or manually restart: Ctrl+C then <code>mvn spring-boot:run</code></li>
+                <li>Test via curl, Postman, or your frontend</li>
+            </ol>
+
+            <h2>Useful Commands</h2>
+            <table>
+                <tr><th>Command</th><th>Purpose</th></tr>
+                <tr><td><code>mvn clean install</code></td><td>Full rebuild</td></tr>
+                <tr><td><code>mvn spring-boot:run</code></td><td>Start service</td></tr>
+                <tr><td><code>mvn test</code></td><td>Run tests</td></tr>
+                <tr><td><code>docker-compose up -d</code></td><td>Start infrastructure</td></tr>
+                <tr><td><code>docker-compose down</code></td><td>Stop infrastructure</td></tr>
+                <tr><td><code>docker-compose logs -f kafka</code></td><td>View Kafka logs</td></tr>
+            </table>
+
+            <h2>Port Reference</h2>
+            <table>
+                <tr><th>Service</th><th>Port</th></tr>
+                <tr><td>Eureka Server</td><td>8761</td></tr>
+                <tr><td>API Gateway</td><td>8080</td></tr>
+                <tr><td>User Service</td><td>8081</td></tr>
+                <tr><td>Product Service</td><td>8082</td></tr>
+                <tr><td>Order Service</td><td>8083</td></tr>
+                <tr><td>PostgreSQL (user_db)</td><td>5433</td></tr>
+                <tr><td>PostgreSQL (product_db)</td><td>5434</td></tr>
+                <tr><td>PostgreSQL (order_db)</td><td>5435</td></tr>
+                <tr><td>Kafka</td><td>9092</td></tr>
+                <tr><td>Redis</td><td>6379</td></tr>
+            </table>
+
+            <div class="footer">
+                <p>MicroMart Documentation</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

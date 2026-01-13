@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - API Reference</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link active">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>API Reference</span>
+            </div>
+
+            <h1>API Reference</h1>
+            <p class="lead">
+                Complete REST API reference for all MicroMart services.
+                All endpoints are accessed through the API Gateway at port 8080.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Base URL</div>
+                <p><code>http://localhost:8080</code></p>
+                <p>All requests go through the API Gateway. Include JWT token in Authorization header for protected endpoints.</p>
+            </div>
+
+            <h2>Authentication</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/auth/register</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Register a new user account</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}</code></pre>
+                    <p><strong>Success Response:</strong> <span class="badge success">201 Created</span></p>
+                    <pre><code>{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "roles": ["USER"],
+  "enabled": false,
+  "createdAt": "2024-01-15T10:30:00Z"
+}</code></pre>
+                    <p><strong>Error Responses:</strong></p>
+                    <ul>
+                        <li><span class="badge warning">400</span> - Validation error</li>
+                        <li><span class="badge warning">409</span> - Username or email already exists</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/auth/login</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Authenticate and get JWT token</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "username": "john_doe",
+  "password": "SecurePass123!"
+}</code></pre>
+                    <p><strong>Success Response:</strong> <span class="badge success">200 OK</span></p>
+                    <pre><code>{
+  "accessToken": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huX2RvZSIsInVzZXJJZCI6MSwicm9sZXMiOlsiVVNFUiJdLCJpYXQiOjE3MDUzMTIyMDAsImV4cCI6MTcwNTM5ODYwMH0.abc123...",
+  "tokenType": "Bearer",
+  "expiresIn": 86400
+}</code></pre>
+                    <p><strong>Error Responses:</strong></p>
+                    <ul>
+                        <li><span class="badge" style="background: #fff5f5; color: #e03131;">401</span> - Invalid credentials</li>
+                        <li><span class="badge" style="background: #fff5f5; color: #e03131;">403</span> - Account disabled or locked</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>Users</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/users/me</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get current user's profile</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Headers:</strong> <code>Authorization: Bearer &lt;token&gt;</code></p>
+                    <p><strong>Success Response:</strong> <span class="badge success">200 OK</span></p>
+                    <pre><code>{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "roles": ["USER"],
+  "enabled": true,
+  "lastLoginAt": "2024-01-15T10:30:00Z"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/users/me</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update current user's profile</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "firstName": "Jonathan",
+  "lastName": "Doe"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/users</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all users (paginated)</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Query Parameters:</strong></p>
+                    <table>
+                        <tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+                        <tr><td>page</td><td>int</td><td>0</td><td>Page number</td></tr>
+                        <tr><td>size</td><td>int</td><td>20</td><td>Page size</td></tr>
+                        <tr><td>sort</td><td>string</td><td>id,asc</td><td>Sort field and direction</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/api/users/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Delete a user</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Success Response:</strong> <span class="badge success">204 No Content</span></p>
+                </div>
+            </div>
+
+            <h2>Products</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/products</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all products (paginated)</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Query Parameters:</strong></p>
+                    <table>
+                        <tr><th>Param</th><th>Type</th><th>Description</th></tr>
+                        <tr><td>page</td><td>int</td><td>Page number (default: 0)</td></tr>
+                        <tr><td>size</td><td>int</td><td>Page size (default: 20)</td></tr>
+                        <tr><td>category</td><td>long</td><td>Filter by category ID</td></tr>
+                        <tr><td>minPrice</td><td>decimal</td><td>Minimum price</td></tr>
+                        <tr><td>maxPrice</td><td>decimal</td><td>Maximum price</td></tr>
+                        <tr><td>search</td><td>string</td><td>Search by name</td></tr>
+                        <tr><td>status</td><td>string</td><td>ACTIVE, INACTIVE</td></tr>
+                        <tr><td>sort</td><td>string</td><td>name, price, createdAt</td></tr>
+                    </table>
+                    <p><strong>Example:</strong> <code>/api/products?category=5&minPrice=10&maxPrice=100&sort=price,asc</code></p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/products/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get product by ID</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Success Response:</strong> <span class="badge success">200 OK</span></p>
+                    <pre><code>{
+  "id": 1,
+  "name": "Wireless Headphones",
+  "description": "Premium noise-cancelling headphones",
+  "price": {
+    "amount": 199.99,
+    "currency": "USD"
+  },
+  "sku": "WH-001",
+  "imageUrl": "https://s3.amazonaws.com/bucket/products/wh-001.jpg",
+  "status": "ACTIVE",
+  "category": {
+    "id": 5,
+    "name": "Electronics"
+  },
+  "availableQuantity": 50,
+  "createdAt": "2024-01-01T00:00:00Z"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/products</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create a new product</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "name": "Wireless Headphones",
+  "description": "Premium noise-cancelling headphones",
+  "price": 199.99,
+  "currency": "USD",
+  "sku": "WH-001",
+  "categoryId": 5,
+  "initialStock": 100,
+  "reorderLevel": 10
+}</code></pre>
+                    <p><strong>Success Response:</strong> <span class="badge success">201 Created</span></p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/products/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update a product</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/products/{id}/image</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Upload product image</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Content-Type:</strong> multipart/form-data</p>
+                    <p><strong>Form Field:</strong> <code>file</code> - Image file (JPEG, PNG)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/api/products/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Delete a product</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                </div>
+            </div>
+
+            <h2>Categories</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/categories</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all categories (hierarchical)</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/categories</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create a category</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <pre><code>{
+  "name": "Electronics",
+  "description": "Electronic devices and accessories",
+  "parentId": null
+}</code></pre>
+                </div>
+            </div>
+
+            <h2>Inventory</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/inventory/{productId}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get inventory for a product</p>
+                    <p><strong>Auth Required:</strong> Yes</p>
+                    <pre><code>{
+  "productId": 1,
+  "quantity": 100,
+  "reservedQuantity": 5,
+  "availableQuantity": 95,
+  "reorderLevel": 10,
+  "needsRestock": false
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/inventory/{productId}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update inventory</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <pre><code>{
+  "quantity": 150,
+  "reorderLevel": 20
+}</code></pre>
+                </div>
+            </div>
+
+            <h2>Orders</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/orders</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create a new order</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "items": [
+    { "productId": 1, "quantity": 2 },
+    { "productId": 5, "quantity": 1 }
+  ],
+  "street": "123 Main St",
+  "city": "New York",
+  "state": "NY",
+  "postalCode": "10001",
+  "country": "USA",
+  "notes": "Leave at door"
+}</code></pre>
+                    <p><strong>Success Response:</strong> <span class="badge success">201 Created</span></p>
+                    <pre><code>{
+  "id": 1,
+  "orderNumber": "ORD-a1b2c3d4",
+  "status": "PENDING",
+  "items": [
+    {
+      "productId": 1,
+      "productName": "Wireless Headphones",
+      "quantity": 2,
+      "unitPrice": { "amount": 199.99, "currency": "USD" },
+      "subtotal": 399.98
+    }
+  ],
+  "totalAmount": { "amount": 599.97, "currency": "USD" },
+  "shippingAddress": "123 Main St, New York, NY 10001, USA",
+  "createdAt": "2024-01-15T10:30:00Z"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/orders</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get current user's orders</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Query Parameters:</strong> page, size, status</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/orders/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get order details</p>
+                    <p><strong>Auth Required:</strong> Yes (owner or ADMIN)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/orders/{id}/cancel</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Cancel an order</p>
+                    <p><strong>Auth Required:</strong> Yes (owner or ADMIN)</p>
+                    <p><strong>Note:</strong> Only PENDING or CONFIRMED orders can be cancelled</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/orders/{id}/status</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update order status</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <pre><code>{ "status": "SHIPPED" }</code></pre>
+                    <p><strong>Valid Statuses:</strong> PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED</p>
+                </div>
+            </div>
+
+            <h2>HTTP Status Codes</h2>
+            <table>
+                <tr>
+                    <th>Code</th>
+                    <th>Meaning</th>
+                    <th>When Used</th>
+                </tr>
+                <tr>
+                    <td><span class="badge success">200</span></td>
+                    <td>OK</td>
+                    <td>Successful GET, PUT</td>
+                </tr>
+                <tr>
+                    <td><span class="badge success">201</span></td>
+                    <td>Created</td>
+                    <td>Successful POST (resource created)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge success">204</span></td>
+                    <td>No Content</td>
+                    <td>Successful DELETE</td>
+                </tr>
+                <tr>
+                    <td><span class="badge warning">400</span></td>
+                    <td>Bad Request</td>
+                    <td>Validation error, malformed request</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">401</span></td>
+                    <td>Unauthorized</td>
+                    <td>Missing or invalid JWT token</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">403</span></td>
+                    <td>Forbidden</td>
+                    <td>Insufficient permissions</td>
+                </tr>
+                <tr>
+                    <td><span class="badge warning">404</span></td>
+                    <td>Not Found</td>
+                    <td>Resource doesn't exist</td>
+                </tr>
+                <tr>
+                    <td><span class="badge warning">409</span></td>
+                    <td>Conflict</td>
+                    <td>Duplicate resource (username, email)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">500</span></td>
+                    <td>Internal Error</td>
+                    <td>Server error</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">503</span></td>
+                    <td>Service Unavailable</td>
+                    <td>Downstream service is down</td>
+                </tr>
+            </table>
+
+            <h2>Error Response Format</h2>
+            <pre><code>{
+  "code": "USER_NOT_FOUND",
+  "message": "User not found with id: 123",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "path": "/api/users/123"
+}
+
+<span class="comment">// Validation errors</span>
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "errors": {
+    "username": "Username is required",
+    "email": "Invalid email format",
+    "password": "Password must be at least 8 characters"
+  }
+}</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

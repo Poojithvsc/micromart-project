@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - JPA & Database Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link active">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>JPA & Database</span>
+            </div>
+
+            <h1>JPA & Database</h1>
+            <p class="lead">
+                Spring Data JPA simplifies database access with powerful repository abstractions.
+                This guide covers entities, repositories, relationships, and queries.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Spring Data JPA</span>
+                <span class="tech-item">Hibernate</span>
+                <span class="tech-item">PostgreSQL</span>
+                <span class="tech-item">HikariCP</span>
+            </div>
+
+            <h2>What is JPA?</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">JPA = Java Persistence API</div>
+                <p>
+                    JPA is a specification for ORM (Object-Relational Mapping) in Java. It maps
+                    Java objects to database tables. <strong>Hibernate</strong> is the most popular
+                    JPA implementation. <strong>Spring Data JPA</strong> makes it even easier with
+                    automatic repository implementation.
+                </p>
+            </div>
+
+            <h2>Entity Classes</h2>
+            <p>
+                Entities are Java classes that map to database tables:
+            </p>
+
+            <pre><code><span class="annotation">@Entity</span>                           <span class="comment">// This class maps to a table</span>
+<span class="annotation">@Table</span>(name = <span class="string">"products"</span>)         <span class="comment">// Table name (optional)</span>
+<span class="keyword">public class</span> <span class="class-name">Product</span> {
+
+    <span class="annotation">@Id</span>                            <span class="comment">// Primary key</span>
+    <span class="annotation">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Column</span>(nullable = <span class="keyword">false</span>, length = <span class="number">100</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> name;
+
+    <span class="annotation">@Column</span>(columnDefinition = <span class="string">"TEXT"</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> description;
+
+    <span class="annotation">@Column</span>(unique = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> sku;
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)    <span class="comment">// Store enum as string</span>
+    <span class="keyword">private</span> <span class="class-name">ProductStatus</span> status;
+
+    <span class="comment">// Getters and setters...</span>
+}
+</code></pre>
+
+            <h3>Common JPA Annotations</h3>
+            <table>
+                <tr>
+                    <th>Annotation</th>
+                    <th>Purpose</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><code>@Entity</code></td>
+                    <td>Marks class as JPA entity</td>
+                    <td><code>@Entity public class User</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Table</code></td>
+                    <td>Specifies table name</td>
+                    <td><code>@Table(name = "users")</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Id</code></td>
+                    <td>Marks primary key field</td>
+                    <td><code>@Id private Long id</code></td>
+                </tr>
+                <tr>
+                    <td><code>@GeneratedValue</code></td>
+                    <td>Auto-generate ID</td>
+                    <td><code>@GeneratedValue(strategy = IDENTITY)</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Column</code></td>
+                    <td>Column customization</td>
+                    <td><code>@Column(nullable = false)</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Enumerated</code></td>
+                    <td>Enum storage type</td>
+                    <td><code>@Enumerated(EnumType.STRING)</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Temporal</code></td>
+                    <td>Date/time type</td>
+                    <td><code>@Temporal(TemporalType.TIMESTAMP)</code></td>
+                </tr>
+                <tr>
+                    <td><code>@Transient</code></td>
+                    <td>Not persisted</td>
+                    <td><code>@Transient private int temp</code></td>
+                </tr>
+            </table>
+
+            <h2>Relationships</h2>
+
+            <h3>One-to-Many / Many-to-One</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Category</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@OneToMany</span>(mappedBy = <span class="string">"category"</span>)  <span class="comment">// One category has many products</span>
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; products;
+}
+
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Product</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@ManyToOne</span>(fetch = FetchType.LAZY)  <span class="comment">// Many products belong to one category</span>
+    <span class="annotation">@JoinColumn</span>(name = <span class="string">"category_id"</span>)
+    <span class="keyword">private</span> <span class="class-name">Category</span> category;
+}
+</code></pre>
+
+            <h3>Many-to-Many</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">User</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@ManyToMany</span>(fetch = FetchType.EAGER)
+    <span class="annotation">@JoinTable</span>(
+        name = <span class="string">"user_roles"</span>,
+        joinColumns = <span class="annotation">@JoinColumn</span>(name = <span class="string">"user_id"</span>),
+        inverseJoinColumns = <span class="annotation">@JoinColumn</span>(name = <span class="string">"role_id"</span>)
+    )
+    <span class="keyword">private</span> <span class="class-name">Set</span>&lt;<span class="class-name">Role</span>&gt; roles;
+}
+
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Role</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@ManyToMany</span>(mappedBy = <span class="string">"roles"</span>)
+    <span class="keyword">private</span> <span class="class-name">Set</span>&lt;<span class="class-name">User</span>&gt; users;
+}
+</code></pre>
+
+            <h3>One-to-One</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Product</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@OneToOne</span>(mappedBy = <span class="string">"product"</span>, cascade = CascadeType.ALL)
+    <span class="keyword">private</span> <span class="class-name">Inventory</span> inventory;
+}
+
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Inventory</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@OneToOne</span>
+    <span class="annotation">@JoinColumn</span>(name = <span class="string">"product_id"</span>)
+    <span class="keyword">private</span> <span class="class-name">Product</span> product;
+}
+</code></pre>
+
+            <h3>Fetch Types</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">LAZY vs EAGER Loading</div>
+                <ul>
+                    <li><strong>LAZY:</strong> Related data loaded only when accessed (recommended)</li>
+                    <li><strong>EAGER:</strong> Related data loaded immediately with parent</li>
+                </ul>
+                <p>Default: <code>@ManyToOne</code> = EAGER, <code>@OneToMany</code> = LAZY</p>
+            </div>
+
+            <h2>Embedded Objects (Value Objects)</h2>
+            <pre><code><span class="annotation">@Embeddable</span>  <span class="comment">// Not a separate table, embedded in parent</span>
+<span class="keyword">public class</span> <span class="class-name">Money</span> {
+    <span class="keyword">private</span> <span class="class-name">BigDecimal</span> amount;
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">CurrencyCode</span> currency;
+}
+
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Product</span> {
+    <span class="annotation">@Embedded</span>
+    <span class="keyword">private</span> <span class="class-name">Money</span> price;  <span class="comment">// Creates price_amount, price_currency columns</span>
+
+    <span class="comment">// Override column names if needed</span>
+    <span class="annotation">@Embedded</span>
+    <span class="annotation">@AttributeOverrides</span>({
+        <span class="annotation">@AttributeOverride</span>(name = <span class="string">"amount"</span>, column = <span class="annotation">@Column</span>(name = <span class="string">"cost_amount"</span>)),
+        <span class="annotation">@AttributeOverride</span>(name = <span class="string">"currency"</span>, column = <span class="annotation">@Column</span>(name = <span class="string">"cost_currency"</span>))
+    })
+    <span class="keyword">private</span> <span class="class-name">Money</span> cost;
+}
+</code></pre>
+
+            <h2>Repositories</h2>
+            <p>
+                Spring Data JPA generates repository implementations automatically:
+            </p>
+
+            <pre><code><span class="keyword">public interface</span> <span class="class-name">UserRepository</span> <span class="keyword">extends</span> <span class="class-name">JpaRepository</span>&lt;<span class="class-name">User</span>, <span class="class-name">Long</span>&gt; {
+
+    <span class="comment">// Spring generates implementation from method name!</span>
+    <span class="class-name">Optional</span>&lt;<span class="class-name">User</span>&gt; findByUsername(<span class="class-name">String</span> username);
+
+    <span class="class-name">Optional</span>&lt;<span class="class-name">User</span>&gt; findByEmailValue(<span class="class-name">String</span> email);
+
+    <span class="class-name">List</span>&lt;<span class="class-name">User</span>&gt; findByEnabledTrue();
+
+    <span class="class-name">List</span>&lt;<span class="class-name">User</span>&gt; findByRolesName(<span class="class-name">RoleName</span> roleName);
+
+    <span class="keyword">boolean</span> existsByUsername(<span class="class-name">String</span> username);
+
+    <span class="keyword">long</span> countByEnabledTrue();
+}
+</code></pre>
+
+            <h3>Query Method Keywords</h3>
+            <table>
+                <tr>
+                    <th>Keyword</th>
+                    <th>Example</th>
+                    <th>SQL Equivalent</th>
+                </tr>
+                <tr>
+                    <td><code>findBy</code></td>
+                    <td><code>findByName(name)</code></td>
+                    <td><code>WHERE name = ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>And</code></td>
+                    <td><code>findByNameAndStatus</code></td>
+                    <td><code>WHERE name = ? AND status = ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>Or</code></td>
+                    <td><code>findByNameOrSku</code></td>
+                    <td><code>WHERE name = ? OR sku = ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>Between</code></td>
+                    <td><code>findByPriceBetween</code></td>
+                    <td><code>WHERE price BETWEEN ? AND ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>LessThan</code></td>
+                    <td><code>findByPriceLessThan</code></td>
+                    <td><code>WHERE price < ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>Like</code></td>
+                    <td><code>findByNameLike</code></td>
+                    <td><code>WHERE name LIKE ?</code></td>
+                </tr>
+                <tr>
+                    <td><code>Containing</code></td>
+                    <td><code>findByNameContaining</code></td>
+                    <td><code>WHERE name LIKE %?%</code></td>
+                </tr>
+                <tr>
+                    <td><code>OrderBy</code></td>
+                    <td><code>findByStatusOrderByNameAsc</code></td>
+                    <td><code>ORDER BY name ASC</code></td>
+                </tr>
+                <tr>
+                    <td><code>True/False</code></td>
+                    <td><code>findByEnabledTrue</code></td>
+                    <td><code>WHERE enabled = true</code></td>
+                </tr>
+            </table>
+
+            <h3>Custom Queries</h3>
+            <pre><code><span class="keyword">public interface</span> <span class="class-name">ProductRepository</span> <span class="keyword">extends</span> <span class="class-name">JpaRepository</span>&lt;<span class="class-name">Product</span>, <span class="class-name">Long</span>&gt; {
+
+    <span class="comment">// JPQL query</span>
+    <span class="annotation">@Query</span>(<span class="string">"SELECT p FROM Product p WHERE p.price.amount > :minPrice"</span>)
+    <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; findExpensiveProducts(<span class="annotation">@Param</span>(<span class="string">"minPrice"</span>) <span class="class-name">BigDecimal</span> minPrice);
+
+    <span class="comment">// Native SQL query</span>
+    <span class="annotation">@Query</span>(value = <span class="string">"SELECT * FROM products WHERE category_id = ?1"</span>, nativeQuery = <span class="keyword">true</span>)
+    <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; findByCategoryNative(<span class="class-name">Long</span> categoryId);
+
+    <span class="comment">// Update query</span>
+    <span class="annotation">@Modifying</span>
+    <span class="annotation">@Query</span>(<span class="string">"UPDATE Product p SET p.status = :status WHERE p.id = :id"</span>)
+    <span class="keyword">int</span> updateStatus(<span class="annotation">@Param</span>(<span class="string">"id"</span>) <span class="class-name">Long</span> id, <span class="annotation">@Param</span>(<span class="string">"status"</span>) <span class="class-name">ProductStatus</span> status);
+}
+</code></pre>
+
+            <h2>Pagination & Sorting</h2>
+            <pre><code><span class="keyword">public interface</span> <span class="class-name">ProductRepository</span> <span class="keyword">extends</span> <span class="class-name">JpaRepository</span>&lt;<span class="class-name">Product</span>, <span class="class-name">Long</span>&gt; {
+
+    <span class="class-name">Page</span>&lt;<span class="class-name">Product</span>&gt; findByStatus(<span class="class-name">ProductStatus</span> status, <span class="class-name">Pageable</span> pageable);
+
+    <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; findByCategoryId(<span class="class-name">Long</span> categoryId, <span class="class-name">Sort</span> sort);
+}
+
+<span class="comment">// Usage in service</span>
+<span class="class-name">Pageable</span> pageable = <span class="class-name">PageRequest</span>.of(<span class="number">0</span>, <span class="number">20</span>, <span class="class-name">Sort</span>.by(<span class="string">"name"</span>).ascending());
+<span class="class-name">Page</span>&lt;<span class="class-name">Product</span>&gt; products = productRepository.findByStatus(<span class="class-name">ProductStatus</span>.ACTIVE, pageable);
+
+products.getContent();      <span class="comment">// List of products</span>
+products.getTotalElements(); <span class="comment">// Total count</span>
+products.getTotalPages();    <span class="comment">// Total pages</span>
+products.getNumber();        <span class="comment">// Current page</span>
+</code></pre>
+
+            <h2>Transactions</h2>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>  <span class="comment">// All methods run in transaction</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> {
+
+    <span class="annotation">@Transactional</span>(readOnly = <span class="keyword">true</span>)  <span class="comment">// Read-only optimization</span>
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> getOrder(<span class="class-name">Long</span> id) {
+        <span class="keyword">return</span> orderRepository.findById(id)...
+    }
+
+    <span class="annotation">@Transactional</span>(
+        isolation = Isolation.REPEATABLE_READ,
+        propagation = Propagation.REQUIRED,
+        rollbackFor = <span class="class-name">Exception</span>.<span class="keyword">class</span>
+    )
+    <span class="keyword">public void</span> createOrder(<span class="class-name">CreateOrderRequest</span> request) {
+        <span class="comment">// If any exception, entire transaction rolls back</span>
+    }
+}
+</code></pre>
+
+            <h2>Optimistic Locking</h2>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Inventory</span> {
+    <span class="annotation">@Id</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="keyword">private int</span> quantity;
+
+    <span class="annotation">@Version</span>  <span class="comment">// Optimistic locking</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> version;
+}
+
+<span class="comment">// When two transactions try to update same row:</span>
+<span class="comment">// 1. Transaction A reads inventory (version=1)</span>
+<span class="comment">// 2. Transaction B reads inventory (version=1)</span>
+<span class="comment">// 3. Transaction A saves (version becomes 2)</span>
+<span class="comment">// 4. Transaction B tries to save (expects version=1)</span>
+<span class="comment">// 5. Hibernate throws OptimisticLockException</span>
+<span class="comment">// 6. Transaction B should retry with fresh data</span>
+</code></pre>
+
+            <h2>Auditing</h2>
+            <pre><code><span class="annotation">@MappedSuperclass</span>
+<span class="annotation">@EntityListeners</span>(<span class="class-name">AuditingEntityListener</span>.<span class="keyword">class</span>)
+<span class="keyword">public abstract class</span> <span class="class-name">AuditableEntity</span> {
+
+    <span class="annotation">@CreatedDate</span>
+    <span class="annotation">@Column</span>(updatable = <span class="keyword">false</span>)
+    <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> createdAt;
+
+    <span class="annotation">@LastModifiedDate</span>
+    <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> updatedAt;
+
+    <span class="annotation">@CreatedBy</span>
+    <span class="keyword">private</span> <span class="class-name">String</span> createdBy;
+
+    <span class="annotation">@LastModifiedBy</span>
+    <span class="keyword">private</span> <span class="class-name">String</span> updatedBy;
+}
+
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">Product</span> <span class="keyword">extends</span> <span class="class-name">AuditableEntity</span> {
+    <span class="comment">// Inherits audit fields</span>
+}
+
+<span class="comment">// Enable auditing</span>
+<span class="annotation">@Configuration</span>
+<span class="annotation">@EnableJpaAuditing</span>
+<span class="keyword">public class</span> <span class="class-name">JpaConfig</span> { }
+</code></pre>
+
+            <h2>N+1 Problem & Solutions</h2>
+
+            <div class="info-box danger">
+                <div class="info-box-title">The N+1 Problem</div>
+                <p>
+                    When loading N entities with a relationship, JPA may execute 1 query for parents
+                    + N queries for children = N+1 queries total. This kills performance!
+                </p>
+            </div>
+
+            <pre><code><span class="comment">// BAD: N+1 problem</span>
+<span class="class-name">List</span>&lt;<span class="class-name">Order</span>&gt; orders = orderRepository.findAll();  <span class="comment">// 1 query</span>
+<span class="keyword">for</span> (<span class="class-name">Order</span> order : orders) {
+    order.getItems().size();  <span class="comment">// N queries (one per order)</span>
+}
+
+<span class="comment">// GOOD: Use JOIN FETCH</span>
+<span class="annotation">@Query</span>(<span class="string">"SELECT o FROM Order o JOIN FETCH o.items"</span>)
+<span class="class-name">List</span>&lt;<span class="class-name">Order</span>&gt; findAllWithItems();  <span class="comment">// 1 query only!</span>
+
+<span class="comment">// GOOD: Use @EntityGraph</span>
+<span class="annotation">@EntityGraph</span>(attributePaths = {<span class="string">"items"</span>, <span class="string">"items.product"</span>})
+<span class="class-name">List</span>&lt;<span class="class-name">Order</span>&gt; findByUserId(<span class="class-name">Long</span> userId);
+</code></pre>
+
+            <h2>Configuration</h2>
+            <pre><code><span class="comment"># application.yml</span>
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/product_db
+    username: postgres
+    password: postgres
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: update  <span class="comment"># validate in production!</span>
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

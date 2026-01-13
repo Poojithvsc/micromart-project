@@ -1,0 +1,438 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "MicroMart Documentation",
+  "elements": [
+    {
+      "type": "text",
+      "x": 350,
+      "y": 20,
+      "text": "ENTITY TO TABLE MAPPING\nHow JPA Annotations Become Database Schema",
+      "fontSize": 28,
+      "fontFamily": 1,
+      "textAlign": "center"
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 100,
+      "text": "JAVA ENTITY",
+      "fontSize": 18,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 130,
+      "width": 350,
+      "height": 280,
+      "backgroundColor": "#d0bfff",
+      "strokeColor": "#7950f2"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 140,
+      "text": "@Entity\n@Table(name = \"users\")\npublic class User {\n\n  @Id\n  @GeneratedValue(IDENTITY)\n  private Long id;\n\n  @Column(nullable=false, unique=true)\n  private String email;\n\n  @Column(length = 100)\n  private String firstName;\n\n  @Enumerated(EnumType.STRING)\n  private Role role;\n\n  @Version\n  private Long version;\n}",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "text",
+      "x": 500,
+      "y": 100,
+      "text": "DATABASE TABLE",
+      "fontSize": 18,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 500,
+      "y": 130,
+      "width": 350,
+      "height": 280,
+      "backgroundColor": "#ffd8a8",
+      "strokeColor": "#e8590c"
+    },
+    {
+      "type": "text",
+      "x": 510,
+      "y": 140,
+      "text": "CREATE TABLE users (\n\n  id         BIGSERIAL PRIMARY KEY,\n\n\n  email      VARCHAR(255) NOT NULL UNIQUE,\n\n\n  first_name VARCHAR(100),\n\n\n  role       VARCHAR(255),\n\n\n  version    BIGINT\n);",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 405,
+      "y": 270,
+      "width": 90,
+      "height": 0,
+      "strokeColor": "#1864ab",
+      "strokeWidth": 2,
+      "points": [[0, 0], [90, 0]]
+    },
+    {
+      "type": "text",
+      "x": 420,
+      "y": 250,
+      "text": "Hibernate\nGenerates",
+      "fontSize": 11,
+      "textAlign": "center"
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 440,
+      "text": "ANNOTATION MAPPING REFERENCE",
+      "fontSize": 16,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 470,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 480,
+      "text": "@Entity",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 235,
+      "y": 487,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 285,
+      "y": 480,
+      "text": "CREATE TABLE",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 515,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 525,
+      "text": "@Id + @GeneratedValue",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 235,
+      "y": 532,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 285,
+      "y": 525,
+      "text": "BIGSERIAL PRIMARY KEY",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 560,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 570,
+      "text": "@Column(nullable=false)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 235,
+      "y": 577,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 285,
+      "y": 570,
+      "text": "NOT NULL",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 605,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 615,
+      "text": "@Column(unique=true)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 235,
+      "y": 622,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 285,
+      "y": 615,
+      "text": "UNIQUE CONSTRAINT",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 500,
+      "y": 470,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 510,
+      "y": 480,
+      "text": "@Column(length=100)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 685,
+      "y": 487,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 735,
+      "y": 480,
+      "text": "VARCHAR(100)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 500,
+      "y": 515,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 510,
+      "y": 525,
+      "text": "@Enumerated(STRING)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 685,
+      "y": 532,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 735,
+      "y": 525,
+      "text": "VARCHAR (enum name)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "rectangle",
+      "x": 500,
+      "y": 560,
+      "width": 180,
+      "height": 35,
+      "backgroundColor": "#b2f2bb",
+      "strokeColor": "#2f9e44"
+    },
+    {
+      "type": "text",
+      "x": 510,
+      "y": 570,
+      "text": "@Version",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "arrow",
+      "x": 685,
+      "y": 577,
+      "width": 40,
+      "height": 0,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 735,
+      "y": 570,
+      "text": "BIGINT (optimistic lock)",
+      "fontSize": 12,
+      "fontFamily": 3
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 680,
+      "text": "RELATIONSHIP MAPPINGS",
+      "fontSize": 16,
+      "fontFamily": 1
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 710,
+      "width": 200,
+      "height": 80,
+      "backgroundColor": "#a5d8ff",
+      "strokeColor": "#1864ab"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 720,
+      "text": "Order\n@OneToMany\nList<OrderItem> items",
+      "fontSize": 12
+    },
+    {
+      "type": "rectangle",
+      "x": 300,
+      "y": 710,
+      "width": 200,
+      "height": 80,
+      "backgroundColor": "#c5f6fa",
+      "strokeColor": "#1098ad"
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 720,
+      "text": "OrderItem\n@ManyToOne\nOrder order",
+      "fontSize": 12
+    },
+    {
+      "type": "arrow",
+      "x": 255,
+      "y": 750,
+      "width": 40,
+      "height": 0,
+      "strokeWidth": 2,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 550,
+      "y": 710,
+      "text": "SQL Result:\norder_items table has\norder_id FOREIGN KEY\npointing to orders(id)",
+      "fontSize": 12
+    },
+    {
+      "type": "rectangle",
+      "x": 50,
+      "y": 820,
+      "width": 200,
+      "height": 80,
+      "backgroundColor": "#a5d8ff",
+      "strokeColor": "#1864ab"
+    },
+    {
+      "type": "text",
+      "x": 60,
+      "y": 830,
+      "text": "Product\n@OneToOne(mappedBy)\nInventory inventory",
+      "fontSize": 12
+    },
+    {
+      "type": "rectangle",
+      "x": 300,
+      "y": 820,
+      "width": 200,
+      "height": 80,
+      "backgroundColor": "#c5f6fa",
+      "strokeColor": "#1098ad"
+    },
+    {
+      "type": "text",
+      "x": 310,
+      "y": 830,
+      "text": "Inventory\n@OneToOne\nProduct product",
+      "fontSize": 12
+    },
+    {
+      "type": "arrow",
+      "x": 255,
+      "y": 860,
+      "width": 40,
+      "height": 0,
+      "strokeWidth": 2,
+      "points": [[0, 0], [40, 0]]
+    },
+    {
+      "type": "text",
+      "x": 550,
+      "y": 820,
+      "text": "SQL Result:\ninventory table has\nproduct_id UNIQUE FK\npointing to products(id)",
+      "fontSize": 12
+    },
+    {
+      "type": "text",
+      "x": 50,
+      "y": 930,
+      "text": "Key: Entity that has @JoinColumn OWNS the relationship and has the FK column",
+      "fontSize": 14,
+      "fontFamily": 1
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}

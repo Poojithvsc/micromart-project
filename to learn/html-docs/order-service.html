@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Order Service</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link active">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <a href="architecture.html">Architecture</a> / <span>Order Service</span>
+            </div>
+
+            <h1>Order Service</h1>
+            <p class="lead">
+                The order processing microservice. Handles order creation, status management,
+                inventory coordination, and order lifecycle.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Port 8083</span>
+                <span class="tech-item">PostgreSQL (order_db)</span>
+                <span class="tech-item">Feign Client</span>
+                <span class="tech-item">Kafka Events</span>
+                <span class="tech-item">Circuit Breaker</span>
+            </div>
+
+            <h2>Overview</h2>
+            <p>
+                Order Service orchestrates the checkout process, coordinating with Product Service
+                for inventory and managing the complete order lifecycle.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Key Responsibilities</div>
+                <ul>
+                    <li>Order creation and validation</li>
+                    <li>Inventory reservation via Product Service</li>
+                    <li>Order status management (state machine)</li>
+                    <li>Order total calculation</li>
+                    <li>Order history and tracking</li>
+                    <li>Publishing order events to Kafka</li>
+                    <li>Handling order cancellations</li>
+                </ul>
+            </div>
+
+            <h2>Order Lifecycle</h2>
+            <p>
+                Orders go through several states during their lifecycle:
+            </p>
+
+            <div class="architecture-box">
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center;">
+                    <div class="service-box" style="background: #fff9db; color: #f08c00;">PENDING</div>
+                    <span>--></span>
+                    <div class="service-box" style="background: #e7f5ff; color: #1864ab;">CONFIRMED</div>
+                    <span>--></span>
+                    <div class="service-box" style="background: #f3d9fa; color: #7950f2;">PROCESSING</div>
+                    <span>--></span>
+                    <div class="service-box" style="background: #c5f6fa; color: #1098ad;">SHIPPED</div>
+                    <span>--></span>
+                    <div class="service-box" style="background: #b2f2bb; color: #2f9e44;">DELIVERED</div>
+                </div>
+                <p style="margin-top: 20px;">
+                    <span class="badge" style="background: #fff5f5; color: #e03131;">CANCELLED</span> - Can happen from PENDING or CONFIRMED states
+                </p>
+            </div>
+
+            <table>
+                <tr>
+                    <th>Status</th>
+                    <th>Description</th>
+                    <th>Actions Available</th>
+                </tr>
+                <tr>
+                    <td><span class="badge warning">PENDING</span></td>
+                    <td>Order created, awaiting confirmation</td>
+                    <td>Confirm, Cancel</td>
+                </tr>
+                <tr>
+                    <td><span class="badge primary">CONFIRMED</span></td>
+                    <td>Order confirmed, payment received</td>
+                    <td>Process, Cancel</td>
+                </tr>
+                <tr>
+                    <td><span class="badge purple">PROCESSING</span></td>
+                    <td>Order being prepared for shipment</td>
+                    <td>Ship</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #c5f6fa; color: #1098ad;">SHIPPED</span></td>
+                    <td>Order shipped, in transit</td>
+                    <td>Mark Delivered</td>
+                </tr>
+                <tr>
+                    <td><span class="badge success">DELIVERED</span></td>
+                    <td>Order delivered to customer</td>
+                    <td>None (final state)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">CANCELLED</span></td>
+                    <td>Order cancelled by user or system</td>
+                    <td>None (final state)</td>
+                </tr>
+            </table>
+
+            <h2>Domain Model</h2>
+
+            <h3>Order Entity (Aggregate Root)</h3>
+            <p>
+                Order is an <strong>Aggregate Root</strong> that contains OrderItems. All modifications
+                go through the Order entity.
+            </p>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"orders"</span>)
+<span class="keyword">public class</span> <span class="class-name">Order</span> <span class="keyword">extends</span> <span class="class-name">AuditableEntity</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Column</span>(unique = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> orderNumber;  <span class="comment">// ORD-uuid format</span>
+
+    <span class="keyword">private</span> <span class="class-name">Long</span> userId;  <span class="comment">// From User Service (not a FK)</span>
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">OrderStatus</span> status;
+
+    <span class="annotation">@Embedded</span>
+    <span class="keyword">private</span> <span class="class-name">Address</span> shippingAddress;  <span class="comment">// Value Object</span>
+
+    <span class="annotation">@Embedded</span>
+    <span class="annotation">@AttributeOverride</span>(name = <span class="string">"amount"</span>, column = <span class="annotation">@Column</span>(name = <span class="string">"total_amount"</span>))
+    <span class="keyword">private</span> <span class="class-name">Money</span> totalAmount;
+
+    <span class="annotation">@OneToMany</span>(mappedBy = <span class="string">"order"</span>, cascade = CascadeType.ALL, orphanRemoval = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">OrderItem</span>&gt; items = <span class="keyword">new</span> <span class="class-name">ArrayList</span>&lt;&gt;();
+
+    <span class="keyword">private</span> <span class="class-name">String</span> notes;
+
+    <span class="comment">// Business methods</span>
+    <span class="keyword">public void</span> addItem(<span class="class-name">OrderItem</span> item) {
+        items.add(item);
+        item.setOrder(<span class="keyword">this</span>);
+        recalculateTotal();
+    }
+
+    <span class="keyword">public void</span> confirm() {
+        <span class="keyword">if</span> (status != <span class="class-name">OrderStatus</span>.PENDING) {
+            <span class="keyword">throw new</span> <span class="class-name">InvalidOrderStateException</span>(<span class="string">"Can only confirm pending orders"</span>);
+        }
+        <span class="keyword">this</span>.status = <span class="class-name">OrderStatus</span>.CONFIRMED;
+    }
+
+    <span class="keyword">public void</span> cancel() {
+        <span class="keyword">if</span> (!canBeCancelled()) {
+            <span class="keyword">throw new</span> <span class="class-name">InvalidOrderStateException</span>(<span class="string">"Order cannot be cancelled in "</span> + status);
+        }
+        <span class="keyword">this</span>.status = <span class="class-name">OrderStatus</span>.CANCELLED;
+    }
+
+    <span class="keyword">public boolean</span> canBeCancelled() {
+        <span class="keyword">return</span> status == <span class="class-name">OrderStatus</span>.PENDING || status == <span class="class-name">OrderStatus</span>.CONFIRMED;
+    }
+
+    <span class="keyword">private void</span> recalculateTotal() {
+        <span class="class-name">BigDecimal</span> total = items.stream()
+            .map(<span class="class-name">OrderItem</span>::getSubtotal)
+            .reduce(<span class="class-name">BigDecimal</span>.ZERO, <span class="class-name">BigDecimal</span>::add);
+        <span class="keyword">this</span>.totalAmount = <span class="class-name">Money</span>.usd(total);
+    }
+}
+</code></pre>
+
+            <h3>OrderItem Entity</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"order_items"</span>)
+<span class="keyword">public class</span> <span class="class-name">OrderItem</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@ManyToOne</span>
+    <span class="annotation">@JoinColumn</span>(name = <span class="string">"order_id"</span>)
+    <span class="keyword">private</span> <span class="class-name">Order</span> order;
+
+    <span class="keyword">private</span> <span class="class-name">Long</span> productId;      <span class="comment">// Reference to Product Service</span>
+    <span class="keyword">private</span> <span class="class-name">String</span> productName;  <span class="comment">// Denormalized for history</span>
+    <span class="keyword">private</span> <span class="class-name">String</span> productSku;
+
+    <span class="keyword">private int</span> quantity;
+
+    <span class="annotation">@Embedded</span>
+    <span class="keyword">private</span> <span class="class-name">Money</span> unitPrice;  <span class="comment">// Price at time of order</span>
+
+    <span class="keyword">public</span> <span class="class-name">BigDecimal</span> getSubtotal() {
+        <span class="keyword">return</span> unitPrice.getAmount().multiply(<span class="class-name">BigDecimal</span>.valueOf(quantity));
+    }
+}
+</code></pre>
+
+            <div class="info-box success">
+                <div class="info-box-title">Why denormalize product name/SKU?</div>
+                <p>
+                    We store <code>productName</code> and <code>productSku</code> directly in OrderItem instead
+                    of just the ID. This way, if a product name changes in Product Service, old orders still
+                    show the original name. This is important for order history and invoices.
+                </p>
+            </div>
+
+            <h3>Address Value Object</h3>
+            <pre><code><span class="annotation">@Embeddable</span>
+<span class="keyword">public final class</span> <span class="class-name">Address</span> {
+
+    <span class="keyword">private</span> <span class="class-name">String</span> street;
+    <span class="keyword">private</span> <span class="class-name">String</span> city;
+    <span class="keyword">private</span> <span class="class-name">String</span> state;
+    <span class="keyword">private</span> <span class="class-name">String</span> postalCode;
+    <span class="keyword">private</span> <span class="class-name">String</span> country;
+
+    <span class="keyword">public static</span> <span class="class-name">Address</span> of(<span class="class-name">String</span> street, <span class="class-name">String</span> city, <span class="class-name">String</span> state,
+                             <span class="class-name">String</span> postalCode, <span class="class-name">String</span> country) {
+        <span class="keyword">return new</span> <span class="class-name">Address</span>(street, city, state, postalCode, country);
+    }
+
+    <span class="keyword">public</span> <span class="class-name">String</span> getFullAddress() {
+        <span class="keyword">return</span> <span class="class-name">String</span>.format(<span class="string">"%s, %s, %s %s, %s"</span>,
+            street, city, state, postalCode, country);
+    }
+}
+</code></pre>
+
+            <h2>Inter-Service Communication</h2>
+
+            <h3>Feign Clients</h3>
+            <p>
+                Order Service uses Feign clients to communicate with Product Service:
+            </p>
+
+            <pre><code><span class="annotation">@FeignClient</span>(
+    name = <span class="string">"product-service"</span>,
+    fallback = <span class="class-name">ProductClientFallback</span>.<span class="keyword">class</span>
+)
+<span class="keyword">public interface</span> <span class="class-name">ProductClient</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products/{id}"</span>)
+    <span class="class-name">ProductDto</span> getProduct(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id);
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products/batch"</span>)
+    <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; getProducts(<span class="annotation">@RequestParam</span> <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids);
+}
+
+<span class="annotation">@FeignClient</span>(
+    name = <span class="string">"product-service"</span>,
+    contextId = <span class="string">"inventory-client"</span>,
+    fallback = <span class="class-name">InventoryClientFallback</span>.<span class="keyword">class</span>
+)
+<span class="keyword">public interface</span> <span class="class-name">InventoryClient</span> {
+
+    <span class="annotation">@PostMapping</span>(<span class="string">"/api/inventory/{productId}/reserve"</span>)
+    <span class="keyword">void</span> reserveStock(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> productId,
+                      <span class="annotation">@RequestBody</span> <span class="class-name">ReserveStockRequest</span> request);
+
+    <span class="annotation">@PostMapping</span>(<span class="string">"/api/inventory/{productId}/release"</span>)
+    <span class="keyword">void</span> releaseStock(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> productId,
+                      <span class="annotation">@RequestBody</span> <span class="class-name">ReleaseStockRequest</span> request);
+}
+</code></pre>
+
+            <h3>Fallback Handlers</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">ProductClientFallback</span> <span class="keyword">implements</span> <span class="class-name">ProductClient</span> {
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">ProductDto</span> getProduct(<span class="class-name">Long</span> id) {
+        <span class="keyword">throw new</span> <span class="class-name">ServiceUnavailableException</span>(<span class="string">"Product Service is unavailable"</span>);
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; getProducts(<span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids) {
+        <span class="keyword">throw new</span> <span class="class-name">ServiceUnavailableException</span>(<span class="string">"Product Service is unavailable"</span>);
+    }
+}
+</code></pre>
+
+            <h2>Service Layer</h2>
+
+            <h3>OrderService - Creating an Order</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">OrderService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">OrderRepository</span> orderRepository;
+    <span class="keyword">private final</span> <span class="class-name">ProductClient</span> productClient;
+    <span class="keyword">private final</span> <span class="class-name">InventoryClient</span> inventoryClient;
+    <span class="keyword">private final</span> <span class="class-name">OrderEventPublisher</span> eventPublisher;
+
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(<span class="class-name">CreateOrderRequest</span> request, <span class="class-name">Long</span> userId) {
+        <span class="comment">// 1. Generate order number</span>
+        <span class="class-name">String</span> orderNumber = <span class="string">"ORD-"</span> + <span class="class-name">UUID</span>.randomUUID().toString().substring(<span class="number">0</span>, <span class="number">8</span>);
+
+        <span class="comment">// 2. Fetch product details from Product Service</span>
+        <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; productIds = request.items().stream()
+            .map(<span class="class-name">OrderItemRequest</span>::productId)
+            .toList();
+        <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; products = productClient.getProducts(productIds);
+
+        <span class="comment">// 3. Reserve inventory for each item</span>
+        <span class="keyword">for</span> (<span class="class-name">OrderItemRequest</span> item : request.items()) {
+            inventoryClient.reserveStock(item.productId(),
+                <span class="keyword">new</span> <span class="class-name">ReserveStockRequest</span>(item.quantity()));
+        }
+
+        <span class="comment">// 4. Create order entity</span>
+        <span class="class-name">Order</span> order = <span class="keyword">new</span> <span class="class-name">Order</span>();
+        order.setOrderNumber(orderNumber);
+        order.setUserId(userId);
+        order.setStatus(<span class="class-name">OrderStatus</span>.PENDING);
+        order.setShippingAddress(<span class="class-name">Address</span>.of(
+            request.street(), request.city(), request.state(),
+            request.postalCode(), request.country()
+        ));
+
+        <span class="comment">// 5. Add order items</span>
+        <span class="keyword">for</span> (<span class="class-name">OrderItemRequest</span> itemReq : request.items()) {
+            <span class="class-name">ProductDto</span> product = findProduct(products, itemReq.productId());
+            <span class="class-name">OrderItem</span> item = <span class="keyword">new</span> <span class="class-name">OrderItem</span>();
+            item.setProductId(product.id());
+            item.setProductName(product.name());
+            item.setProductSku(product.sku());
+            item.setQuantity(itemReq.quantity());
+            item.setUnitPrice(<span class="class-name">Money</span>.of(product.price(), product.currency()));
+            order.addItem(item);
+        }
+
+        <span class="comment">// 6. Save order</span>
+        order = orderRepository.save(order);
+
+        <span class="comment">// 7. Publish event</span>
+        eventPublisher.publishOrderCreated(order);
+
+        <span class="keyword">return</span> mapper.toResponse(order);
+    }
+}
+</code></pre>
+
+            <h3>Order Cancellation</h3>
+            <pre><code><span class="keyword">public void</span> cancelOrder(<span class="class-name">Long</span> orderId, <span class="class-name">Long</span> userId) {
+    <span class="class-name">Order</span> order = orderRepository.findById(orderId)
+        .orElseThrow(() -> <span class="keyword">new</span> <span class="class-name">OrderNotFoundException</span>(orderId));
+
+    <span class="comment">// Verify ownership</span>
+    <span class="keyword">if</span> (!order.getUserId().equals(userId)) {
+        <span class="keyword">throw new</span> <span class="class-name">AccessDeniedException</span>(<span class="string">"Not your order"</span>);
+    }
+
+    <span class="comment">// Cancel order (validates state internally)</span>
+    order.cancel();
+
+    <span class="comment">// Release reserved inventory</span>
+    <span class="keyword">for</span> (<span class="class-name">OrderItem</span> item : order.getItems()) {
+        inventoryClient.releaseStock(item.getProductId(),
+            <span class="keyword">new</span> <span class="class-name">ReleaseStockRequest</span>(item.getQuantity()));
+    }
+
+    orderRepository.save(order);
+    eventPublisher.publishOrderCancelled(order);
+}
+</code></pre>
+
+            <h2>API Endpoints</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/orders</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create a new order</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "items": [
+    { "productId": 1, "quantity": 2 },
+    { "productId": 5, "quantity": 1 }
+  ],
+  "street": "123 Main St",
+  "city": "New York",
+  "state": "NY",
+  "postalCode": "10001",
+  "country": "USA",
+  "notes": "Leave at door"
+}</code></pre>
+                    <p><strong>Response:</strong> 201 Created</p>
+                    <pre><code>{
+  "id": 1,
+  "orderNumber": "ORD-a1b2c3d4",
+  "status": "PENDING",
+  "items": [...],
+  "totalAmount": { "amount": 599.97, "currency": "USD" },
+  "shippingAddress": "123 Main St, New York, NY 10001, USA",
+  "createdAt": "2024-01-15T10:30:00Z"
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/orders</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get current user's orders (paginated)</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Query Params:</strong> page, size, status</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/orders/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get order details</p>
+                    <p><strong>Auth Required:</strong> Yes (owner or ADMIN)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/orders/{id}/confirm</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Confirm a pending order</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/orders/{id}/cancel</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Cancel an order</p>
+                    <p><strong>Auth Required:</strong> Yes (owner or ADMIN)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/orders/{id}/status</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update order status</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Request Body:</strong> <code>{ "status": "SHIPPED" }</code></p>
+                </div>
+            </div>
+
+            <h2>Event Publishing</h2>
+
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">OrderEventPublisher</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafka;
+
+    <span class="keyword">public void</span> publishOrderCreated(<span class="class-name">Order</span> order) {
+        <span class="class-name">OrderCreatedEvent</span> event = <span class="keyword">new</span> <span class="class-name">OrderCreatedEvent</span>(
+            order.getId(),
+            order.getOrderNumber(),
+            order.getUserId(),
+            order.getTotalAmount().getAmount(),
+            <span class="class-name">LocalDateTime</span>.now()
+        );
+        kafka.send(<span class="string">"order-events"</span>, event);
+    }
+
+    <span class="keyword">public void</span> publishOrderCancelled(<span class="class-name">Order</span> order) {
+        kafka.send(<span class="string">"order-events"</span>, <span class="keyword">new</span> <span class="class-name">OrderCancelledEvent</span>(order.getId()));
+    }
+
+    <span class="keyword">public void</span> publishOrderShipped(<span class="class-name">Order</span> order, <span class="class-name">String</span> trackingNumber) {
+        kafka.send(<span class="string">"order-events"</span>, <span class="keyword">new</span> <span class="class-name">OrderShippedEvent</span>(order.getId(), trackingNumber));
+    }
+}
+</code></pre>
+
+            <h3>Published Events</h3>
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Topic</th>
+                    <th>Trigger</th>
+                </tr>
+                <tr>
+                    <td>OrderCreatedEvent</td>
+                    <td>order-events</td>
+                    <td>New order placed</td>
+                </tr>
+                <tr>
+                    <td>OrderConfirmedEvent</td>
+                    <td>order-events</td>
+                    <td>Order confirmed</td>
+                </tr>
+                <tr>
+                    <td>OrderCancelledEvent</td>
+                    <td>order-events</td>
+                    <td>Order cancelled</td>
+                </tr>
+                <tr>
+                    <td>OrderShippedEvent</td>
+                    <td>order-events</td>
+                    <td>Order shipped</td>
+                </tr>
+                <tr>
+                    <td>OrderDeliveredEvent</td>
+                    <td>order-events</td>
+                    <td>Order delivered</td>
+                </tr>
+            </table>
+
+            <h2>Database Schema</h2>
+
+            <table>
+                <tr>
+                    <th>Table</th>
+                    <th>Columns</th>
+                </tr>
+                <tr>
+                    <td><code>orders</code></td>
+                    <td>id, order_number, user_id, status, street, city, state, postal_code, country, total_amount, total_currency, notes, created_at, updated_at</td>
+                </tr>
+                <tr>
+                    <td><code>order_items</code></td>
+                    <td>id, order_id, product_id, product_name, product_sku, quantity, unit_price_amount, unit_price_currency</td>
+                </tr>
+            </table>
+
+            <h2>Project Structure</h2>
+            <pre><code>order-service/
+  src/main/java/com/micromart/order/
+    client/           <span class="comment"># ProductClient, InventoryClient</span>
+    config/           <span class="comment"># Feign, Kafka config</span>
+    controller/       <span class="comment"># OrderController</span>
+    domain/
+      entity/        <span class="comment"># Order, OrderItem</span>
+      valueobject/   <span class="comment"># Address, Money</span>
+      event/         <span class="comment"># OrderCreatedEvent</span>
+    dto/
+      request/       <span class="comment"># CreateOrderRequest</span>
+      response/      <span class="comment"># OrderResponse</span>
+    exception/       <span class="comment"># OrderNotFoundException</span>
+    mapper/          <span class="comment"># OrderMapper</span>
+    repository/      <span class="comment"># OrderRepository</span>
+    service/         <span class="comment"># OrderService</span>
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

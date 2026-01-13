@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Product Service</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link active">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <a href="architecture.html">Architecture</a> / <span>Product Service</span>
+            </div>
+
+            <h1>Product Service</h1>
+            <p class="lead">
+                The catalog and inventory management microservice. Handles products, categories,
+                stock tracking, and image storage.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Port 8082</span>
+                <span class="tech-item">PostgreSQL (product_db)</span>
+                <span class="tech-item">AWS S3</span>
+                <span class="tech-item">Redis Cache</span>
+                <span class="tech-item">Optimistic Locking</span>
+            </div>
+
+            <h2>Overview</h2>
+            <p>
+                Product Service is the heart of the catalog system. It manages everything related
+                to products - from creation to inventory tracking.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Key Responsibilities</div>
+                <ul>
+                    <li>Product CRUD operations (Create, Read, Update, Delete)</li>
+                    <li>Category management with hierarchical structure</li>
+                    <li>Inventory tracking with real-time stock updates</li>
+                    <li>Stock reservation for orders</li>
+                    <li>Product image upload to AWS S3</li>
+                    <li>Product search and filtering</li>
+                    <li>Caching frequently accessed products</li>
+                </ul>
+            </div>
+
+            <h2>Domain Model</h2>
+
+            <h3>Product Entity (Aggregate Root)</h3>
+            <p>
+                Product is an <strong>Aggregate Root</strong> - the main entry point for the product aggregate.
+            </p>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"products"</span>)
+<span class="keyword">public class</span> <span class="class-name">Product</span> <span class="keyword">extends</span> <span class="class-name">AuditableEntity</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Column</span>(nullable = <span class="keyword">false</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> name;
+
+    <span class="keyword">private</span> <span class="class-name">String</span> description;
+
+    <span class="annotation">@Embedded</span>
+    <span class="keyword">private</span> <span class="class-name">Money</span> price;  <span class="comment">// Value Object</span>
+
+    <span class="annotation">@Column</span>(unique = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> sku;  <span class="comment">// Stock Keeping Unit</span>
+
+    <span class="keyword">private</span> <span class="class-name">String</span> imageUrl;  <span class="comment">// S3 URL</span>
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">ProductStatus</span> status;  <span class="comment">// ACTIVE, INACTIVE, OUT_OF_STOCK</span>
+
+    <span class="annotation">@ManyToOne</span>(fetch = FetchType.LAZY)
+    <span class="keyword">private</span> <span class="class-name">Category</span> category;
+
+    <span class="annotation">@OneToOne</span>(mappedBy = <span class="string">"product"</span>, cascade = CascadeType.ALL)
+    <span class="keyword">private</span> <span class="class-name">Inventory</span> inventory;
+
+    <span class="comment">// Business methods</span>
+    <span class="keyword">public void</span> activate() { <span class="keyword">this</span>.status = <span class="class-name">ProductStatus</span>.ACTIVE; }
+    <span class="keyword">public void</span> deactivate() { <span class="keyword">this</span>.status = <span class="class-name">ProductStatus</span>.INACTIVE; }
+}
+</code></pre>
+
+            <h3>Money Value Object</h3>
+            <p>
+                Price is represented as a <strong>Money</strong> value object with currency support.
+            </p>
+
+            <pre><code><span class="annotation">@Embeddable</span>
+<span class="keyword">public final class</span> <span class="class-name">Money</span> <span class="keyword">implements</span> <span class="class-name">Comparable</span>&lt;<span class="class-name">Money</span>&gt; {
+
+    <span class="keyword">private</span> <span class="class-name">BigDecimal</span> amount;
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">CurrencyCode</span> currency;  <span class="comment">// USD, EUR, INR</span>
+
+    <span class="comment">// Factory methods</span>
+    <span class="keyword">public static</span> <span class="class-name">Money</span> of(<span class="class-name">BigDecimal</span> amount, <span class="class-name">CurrencyCode</span> currency) {
+        <span class="keyword">if</span> (amount.compareTo(<span class="class-name">BigDecimal</span>.ZERO) < <span class="number">0</span>) {
+            <span class="keyword">throw new</span> <span class="class-name">IllegalArgumentException</span>(<span class="string">"Amount cannot be negative"</span>);
+        }
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(amount, currency);
+    }
+
+    <span class="keyword">public static</span> <span class="class-name">Money</span> usd(<span class="class-name">BigDecimal</span> amount) {
+        <span class="keyword">return</span> of(amount, <span class="class-name">CurrencyCode</span>.USD);
+    }
+
+    <span class="comment">// Arithmetic operations (return new instances - immutable)</span>
+    <span class="keyword">public</span> <span class="class-name">Money</span> add(<span class="class-name">Money</span> other) {
+        ensureSameCurrency(other);
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(<span class="keyword">this</span>.amount.add(other.amount), <span class="keyword">this</span>.currency);
+    }
+
+    <span class="keyword">public</span> <span class="class-name">Money</span> multiply(<span class="keyword">int</span> quantity) {
+        <span class="keyword">return new</span> <span class="class-name">Money</span>(<span class="keyword">this</span>.amount.multiply(<span class="class-name">BigDecimal</span>.valueOf(quantity)), <span class="keyword">this</span>.currency);
+    }
+}
+</code></pre>
+
+            <h3>Category Entity</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"categories"</span>)
+<span class="keyword">public class</span> <span class="class-name">Category</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Column</span>(unique = <span class="keyword">true</span>, nullable = <span class="keyword">false</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> name;
+
+    <span class="keyword">private</span> <span class="class-name">String</span> description;
+
+    <span class="annotation">@ManyToOne</span>
+    <span class="keyword">private</span> <span class="class-name">Category</span> parent;  <span class="comment">// Self-referencing for hierarchy</span>
+
+    <span class="annotation">@OneToMany</span>(mappedBy = <span class="string">"parent"</span>)
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">Category</span>&gt; subcategories;
+
+    <span class="annotation">@OneToMany</span>(mappedBy = <span class="string">"category"</span>)
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; products;
+}
+</code></pre>
+
+            <h3>Inventory Entity</h3>
+            <p>
+                Inventory uses <strong>Optimistic Locking</strong> to prevent lost updates when
+                multiple orders try to reserve stock simultaneously.
+            </p>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"inventory"</span>)
+<span class="keyword">public class</span> <span class="class-name">Inventory</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@OneToOne</span>
+    <span class="keyword">private</span> <span class="class-name">Product</span> product;
+
+    <span class="keyword">private int</span> quantity;         <span class="comment">// Total stock</span>
+    <span class="keyword">private int</span> reservedQuantity; <span class="comment">// Reserved for pending orders</span>
+    <span class="keyword">private int</span> reorderLevel;     <span class="comment">// When to restock</span>
+
+    <span class="annotation">@Version</span>  <span class="comment">// Optimistic locking - increments on each update</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> version;
+
+    <span class="comment">// Available = Total - Reserved</span>
+    <span class="keyword">public int</span> getAvailableQuantity() {
+        <span class="keyword">return</span> quantity - reservedQuantity;
+    }
+
+    <span class="comment">// Reserve stock for an order</span>
+    <span class="keyword">public void</span> reserve(<span class="keyword">int</span> amount) {
+        <span class="keyword">if</span> (amount > getAvailableQuantity()) {
+            <span class="keyword">throw new</span> <span class="class-name">InsufficientStockException</span>(product.getId(), amount, getAvailableQuantity());
+        }
+        <span class="keyword">this</span>.reservedQuantity += amount;
+    }
+
+    <span class="comment">// Confirm reservation (order completed)</span>
+    <span class="keyword">public void</span> confirmReservation(<span class="keyword">int</span> amount) {
+        <span class="keyword">this</span>.quantity -= amount;
+        <span class="keyword">this</span>.reservedQuantity -= amount;
+    }
+
+    <span class="comment">// Cancel reservation (order cancelled)</span>
+    <span class="keyword">public void</span> releaseReservation(<span class="keyword">int</span> amount) {
+        <span class="keyword">this</span>.reservedQuantity -= amount;
+    }
+
+    <span class="keyword">public boolean</span> needsRestock() {
+        <span class="keyword">return</span> quantity <= reorderLevel;
+    }
+}
+</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Understanding @Version (Optimistic Locking)</div>
+                <p>
+                    When two users try to reserve stock at the same time:
+                </p>
+                <ol>
+                    <li>User A reads inventory (version=1)</li>
+                    <li>User B reads inventory (version=1)</li>
+                    <li>User A reserves stock, saves (version becomes 2)</li>
+                    <li>User B tries to save (expects version=1, but it's 2)</li>
+                    <li>Hibernate throws <code>OptimisticLockException</code></li>
+                    <li>User B retries with fresh data</li>
+                </ol>
+                <p>This prevents "lost updates" without database locks!</p>
+            </div>
+
+            <h2>Service Layer</h2>
+
+            <h3>ProductService</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="keyword">public class</span> <span class="class-name">ProductServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">ProductService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">ProductRepository</span> productRepository;
+    <span class="keyword">private final</span> <span class="class-name">CategoryRepository</span> categoryRepository;
+    <span class="keyword">private final</span> <span class="class-name">ProductMapper</span> mapper;
+    <span class="keyword">private final</span> <span class="class-name">S3Service</span> s3Service;
+
+    <span class="keyword">public</span> <span class="class-name">ProductResponse</span> createProduct(<span class="class-name">CreateProductRequest</span> request) {
+        <span class="comment">// 1. Find category</span>
+        <span class="class-name">Category</span> category = categoryRepository.findById(request.categoryId())
+            .orElseThrow(() -> <span class="keyword">new</span> <span class="class-name">CategoryNotFoundException</span>(request.categoryId()));
+
+        <span class="comment">// 2. Create product</span>
+        <span class="class-name">Product</span> product = mapper.toEntity(request);
+        product.setCategory(category);
+        product.setStatus(<span class="class-name">ProductStatus</span>.ACTIVE);
+
+        <span class="comment">// 3. Create inventory</span>
+        <span class="class-name">Inventory</span> inventory = <span class="keyword">new</span> <span class="class-name">Inventory</span>();
+        inventory.setQuantity(request.initialStock());
+        inventory.setReorderLevel(request.reorderLevel());
+        product.setInventory(inventory);
+
+        <span class="comment">// 4. Save and return</span>
+        product = productRepository.save(product);
+        <span class="keyword">return</span> mapper.toResponse(product);
+    }
+
+    <span class="annotation">@Transactional</span>(readOnly = <span class="keyword">true</span>)
+    <span class="keyword">public</span> <span class="class-name">Page</span>&lt;<span class="class-name">ProductResponse</span>&gt; searchProducts(<span class="class-name">ProductSearchCriteria</span> criteria, <span class="class-name">Pageable</span> pageable) {
+        <span class="keyword">return</span> productRepository.findBySearchCriteria(criteria, pageable)
+            .map(mapper::toResponse);
+    }
+}
+</code></pre>
+
+            <h3>InventoryService</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="keyword">public class</span> <span class="class-name">InventoryServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">InventoryService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">InventoryRepository</span> inventoryRepository;
+
+    <span class="annotation">@Retryable</span>(value = <span class="class-name">OptimisticLockException</span>.<span class="keyword">class</span>, maxAttempts = <span class="number">3</span>)
+    <span class="keyword">public void</span> reserveStock(<span class="class-name">Long</span> productId, <span class="keyword">int</span> quantity) {
+        <span class="class-name">Inventory</span> inventory = inventoryRepository.findByProductId(productId)
+            .orElseThrow(() -> <span class="keyword">new</span> <span class="class-name">ProductNotFoundException</span>(productId));
+
+        inventory.reserve(quantity);
+        inventoryRepository.save(inventory);
+
+        <span class="comment">// Check if restock needed</span>
+        <span class="keyword">if</span> (inventory.needsRestock()) {
+            eventPublisher.publishLowStockAlert(productId, inventory.getQuantity());
+        }
+    }
+}
+</code></pre>
+
+            <h2>Image Upload (AWS S3)</h2>
+
+            <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">S3Service</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">S3Client</span> s3Client;
+
+    <span class="annotation">@Value</span>(<span class="string">"${aws.s3.bucket}"</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> bucketName;
+
+    <span class="keyword">public</span> <span class="class-name">String</span> uploadImage(<span class="class-name">MultipartFile</span> file) {
+        <span class="class-name">String</span> key = <span class="string">"products/"</span> + <span class="class-name">UUID</span>.randomUUID() + getExtension(file);
+
+        <span class="class-name">PutObjectRequest</span> request = <span class="class-name">PutObjectRequest</span>.builder()
+            .bucket(bucketName)
+            .key(key)
+            .contentType(file.getContentType())
+            .build();
+
+        s3Client.putObject(request, <span class="class-name">RequestBody</span>.fromBytes(file.getBytes()));
+
+        <span class="keyword">return</span> getPublicUrl(key);
+    }
+}
+</code></pre>
+
+            <h2>API Endpoints</h2>
+
+            <h3>Product Endpoints</h3>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/products</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all products (paginated)</p>
+                    <p><strong>Query Params:</strong></p>
+                    <ul>
+                        <li><code>page</code> - Page number (default: 0)</li>
+                        <li><code>size</code> - Page size (default: 20)</li>
+                        <li><code>category</code> - Filter by category ID</li>
+                        <li><code>minPrice</code>, <code>maxPrice</code> - Price range</li>
+                        <li><code>search</code> - Search by name</li>
+                        <li><code>sort</code> - Sort field (name, price, createdAt)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/products/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get product by ID</p>
+                    <p><strong>Response:</strong></p>
+                    <pre><code>{
+  "id": 1,
+  "name": "Wireless Headphones",
+  "description": "Premium noise-cancelling headphones",
+  "price": { "amount": 199.99, "currency": "USD" },
+  "sku": "WH-001",
+  "imageUrl": "https://s3.../products/abc.jpg",
+  "status": "ACTIVE",
+  "category": { "id": 5, "name": "Electronics" },
+  "availableQuantity": 50
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/products</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create a new product</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "name": "Wireless Headphones",
+  "description": "Premium noise-cancelling headphones",
+  "price": 199.99,
+  "currency": "USD",
+  "sku": "WH-001",
+  "categoryId": 5,
+  "initialStock": 100,
+  "reorderLevel": 10
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/products/{id}/image</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Upload product image</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Content-Type:</strong> multipart/form-data</p>
+                </div>
+            </div>
+
+            <h3>Inventory Endpoints</h3>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/inventory/{productId}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get inventory for a product</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/inventory/{productId}/reserve</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Reserve stock (called by Order Service)</p>
+                    <p><strong>Request Body:</strong> <code>{ "quantity": 5 }</code></p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/inventory/{productId}/release</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Release reserved stock (order cancelled)</p>
+                </div>
+            </div>
+
+            <h3>Category Endpoints</h3>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/categories</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all categories (hierarchical)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/categories</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Create category</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                </div>
+            </div>
+
+            <h2>Database Schema</h2>
+
+            <table>
+                <tr>
+                    <th>Table</th>
+                    <th>Columns</th>
+                </tr>
+                <tr>
+                    <td><code>products</code></td>
+                    <td>id, name, description, price_amount, price_currency, sku, image_url, status, category_id, created_at, updated_at</td>
+                </tr>
+                <tr>
+                    <td><code>categories</code></td>
+                    <td>id, name, description, parent_id</td>
+                </tr>
+                <tr>
+                    <td><code>inventory</code></td>
+                    <td>id, product_id, quantity, reserved_quantity, reorder_level, version</td>
+                </tr>
+            </table>
+
+            <h2>Caching Strategy</h2>
+            <p>
+                Product Service uses Redis to cache frequently accessed data:
+            </p>
+
+            <pre><code><span class="annotation">@Cacheable</span>(value = <span class="string">"products"</span>, key = <span class="string">"#id"</span>)
+<span class="keyword">public</span> <span class="class-name">ProductResponse</span> getProduct(<span class="class-name">Long</span> id) {
+    <span class="keyword">return</span> productRepository.findById(id)
+        .map(mapper::toResponse)
+        .orElseThrow(() -> <span class="keyword">new</span> <span class="class-name">ProductNotFoundException</span>(id));
+}
+
+<span class="annotation">@CacheEvict</span>(value = <span class="string">"products"</span>, key = <span class="string">"#id"</span>)
+<span class="keyword">public</span> <span class="class-name">ProductResponse</span> updateProduct(<span class="class-name">Long</span> id, <span class="class-name">UpdateProductRequest</span> request) {
+    <span class="comment">// Cache is cleared when product is updated</span>
+}
+</code></pre>
+
+            <h2>Project Structure</h2>
+            <pre><code>product-service/
+  src/main/java/com/micromart/product/
+    config/           <span class="comment"># S3, Redis, Kafka config</span>
+    controller/       <span class="comment"># ProductController, CategoryController</span>
+    domain/
+      entity/        <span class="comment"># Product, Category, Inventory</span>
+      valueobject/   <span class="comment"># Money, CurrencyCode</span>
+    dto/
+      request/       <span class="comment"># CreateProductRequest</span>
+      response/      <span class="comment"># ProductResponse</span>
+    exception/       <span class="comment"># ProductNotFoundException, InsufficientStockException</span>
+    mapper/          <span class="comment"># ProductMapper, CategoryMapper</span>
+    repository/      <span class="comment"># ProductRepository, InventoryRepository</span>
+    service/         <span class="comment"># ProductService, InventoryService, S3Service</span>
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

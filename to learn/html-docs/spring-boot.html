@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Spring Boot Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link active">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Spring Boot</span>
+            </div>
+
+            <h1>Spring Boot Fundamentals</h1>
+            <p class="lead">
+                Spring Boot is the foundation of MicroMart. It makes building production-ready
+                Spring applications simple with auto-configuration and embedded servers.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Spring Boot 3.4.4</span>
+                <span class="tech-item">Java 24</span>
+                <span class="tech-item">Maven</span>
+                <span class="tech-item">Embedded Tomcat</span>
+            </div>
+
+            <h2>What is Spring Boot?</h2>
+            <p>
+                Spring Boot is a framework that simplifies Spring application development by:
+            </p>
+            <ul>
+                <li><strong>Auto-configuration:</strong> Automatically configures your application based on dependencies</li>
+                <li><strong>Embedded Server:</strong> No need to deploy WAR files - just run the JAR</li>
+                <li><strong>Starter Dependencies:</strong> Curated dependency sets that work well together</li>
+                <li><strong>Production Ready:</strong> Health checks, metrics, and externalized configuration</li>
+            </ul>
+
+            <div class="info-box info">
+                <div class="info-box-title">Spring vs Spring Boot</div>
+                <p>
+                    <strong>Spring Framework</strong> is a comprehensive programming model.
+                    <strong>Spring Boot</strong> makes it easy to create stand-alone Spring applications
+                    with minimal configuration.
+                </p>
+            </div>
+
+            <h2>Project Structure</h2>
+            <p>
+                Every Spring Boot service in MicroMart follows a standard structure:
+            </p>
+
+            <pre><code>user-service/
+  pom.xml                          <span class="comment"># Maven build file</span>
+  src/
+    main/
+      java/
+        com/micromart/user/
+          UserServiceApplication.java  <span class="comment"># Entry point</span>
+          config/                      <span class="comment"># Configuration classes</span>
+          controller/                  <span class="comment"># REST controllers</span>
+          service/                     <span class="comment"># Business logic</span>
+          repository/                  <span class="comment"># Data access</span>
+          domain/                      <span class="comment"># Entities & Value Objects</span>
+          dto/                         <span class="comment"># Request/Response DTOs</span>
+          exception/                   <span class="comment"># Custom exceptions</span>
+          mapper/                      <span class="comment"># DTO mappers</span>
+      resources/
+        application.yml              <span class="comment"># Configuration</span>
+        application-dev.yml          <span class="comment"># Dev profile</span>
+        application-prod.yml         <span class="comment"># Production profile</span>
+    test/
+      java/
+        com/micromart/user/          <span class="comment"># Unit & Integration tests</span>
+</code></pre>
+
+            <h2>The Main Application Class</h2>
+            <p>
+                Every Spring Boot application has a main class with <code>@SpringBootApplication</code>:
+            </p>
+
+            <pre><code><span class="annotation">@SpringBootApplication</span>
+<span class="keyword">public class</span> <span class="class-name">UserServiceApplication</span> {
+
+    <span class="keyword">public static void</span> main(<span class="class-name">String</span>[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">UserServiceApplication</span>.<span class="keyword">class</span>, args);
+    }
+}
+</code></pre>
+
+            <div class="info-box success">
+                <div class="info-box-title">@SpringBootApplication</div>
+                <p>This annotation is a combination of three annotations:</p>
+                <ul>
+                    <li><code>@SpringBootConfiguration</code> - Marks this as a configuration class</li>
+                    <li><code>@EnableAutoConfiguration</code> - Enables auto-configuration magic</li>
+                    <li><code>@ComponentScan</code> - Scans for components in current package and sub-packages</li>
+                </ul>
+            </div>
+
+            <h2>Dependency Injection</h2>
+            <p>
+                Spring manages object creation and wiring. You declare dependencies, Spring provides them.
+            </p>
+
+            <h3>Constructor Injection (Recommended)</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">UserServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">UserService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">UserRepository</span> userRepository;
+    <span class="keyword">private final</span> <span class="class-name">PasswordEncoder</span> passwordEncoder;
+
+    <span class="comment">// Spring automatically injects dependencies</span>
+    <span class="keyword">public</span> UserServiceImpl(<span class="class-name">UserRepository</span> userRepository,
+                          <span class="class-name">PasswordEncoder</span> passwordEncoder) {
+        <span class="keyword">this</span>.userRepository = userRepository;
+        <span class="keyword">this</span>.passwordEncoder = passwordEncoder;
+    }
+}
+</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Why Constructor Injection?</div>
+                <ul>
+                    <li>Dependencies are clear and explicit</li>
+                    <li>Fields can be <code>final</code> (immutable)</li>
+                    <li>Easier to test - just pass mock objects</li>
+                    <li>Fails fast if dependency is missing</li>
+                </ul>
+            </div>
+
+            <h3>With Lombok</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@RequiredArgsConstructor</span>  <span class="comment">// Generates constructor for final fields</span>
+<span class="keyword">public class</span> <span class="class-name">UserServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">UserService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">UserRepository</span> userRepository;
+    <span class="keyword">private final</span> <span class="class-name">PasswordEncoder</span> passwordEncoder;
+
+    <span class="comment">// No constructor needed - Lombok generates it!</span>
+}
+</code></pre>
+
+            <h2>Core Annotations</h2>
+
+            <h3>Stereotype Annotations</h3>
+            <table>
+                <tr>
+                    <th>Annotation</th>
+                    <th>Purpose</th>
+                    <th>Usage</th>
+                </tr>
+                <tr>
+                    <td><code>@Component</code></td>
+                    <td>Generic Spring-managed component</td>
+                    <td>General purpose beans</td>
+                </tr>
+                <tr>
+                    <td><code>@Service</code></td>
+                    <td>Business logic layer</td>
+                    <td>Service classes</td>
+                </tr>
+                <tr>
+                    <td><code>@Repository</code></td>
+                    <td>Data access layer</td>
+                    <td>Database operations</td>
+                </tr>
+                <tr>
+                    <td><code>@Controller</code></td>
+                    <td>Web MVC controller</td>
+                    <td>Returns views</td>
+                </tr>
+                <tr>
+                    <td><code>@RestController</code></td>
+                    <td>REST API controller</td>
+                    <td>Returns JSON/XML</td>
+                </tr>
+                <tr>
+                    <td><code>@Configuration</code></td>
+                    <td>Configuration class</td>
+                    <td>Bean definitions</td>
+                </tr>
+            </table>
+
+            <h3>Web Annotations</h3>
+            <pre><code><span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/users"</span>)
+<span class="keyword">public class</span> <span class="class-name">UserController</span> {
+
+    <span class="annotation">@GetMapping</span>                    <span class="comment">// GET /api/users</span>
+    <span class="keyword">public</span> <span class="class-name">List</span>&lt;<span class="class-name">UserResponse</span>&gt; getAll() { }
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/{id}"</span>)            <span class="comment">// GET /api/users/123</span>
+    <span class="keyword">public</span> <span class="class-name">UserResponse</span> getById(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id) { }
+
+    <span class="annotation">@PostMapping</span>                   <span class="comment">// POST /api/users</span>
+    <span class="keyword">public</span> <span class="class-name">UserResponse</span> create(<span class="annotation">@RequestBody</span> <span class="class-name">CreateUserRequest</span> request) { }
+
+    <span class="annotation">@PutMapping</span>(<span class="string">"/{id}"</span>)            <span class="comment">// PUT /api/users/123</span>
+    <span class="keyword">public</span> <span class="class-name">UserResponse</span> update(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id,
+                                <span class="annotation">@RequestBody</span> <span class="class-name">UpdateUserRequest</span> request) { }
+
+    <span class="annotation">@DeleteMapping</span>(<span class="string">"/{id}"</span>)         <span class="comment">// DELETE /api/users/123</span>
+    <span class="keyword">public void</span> delete(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id) { }
+}
+</code></pre>
+
+            <h3>Parameter Binding</h3>
+            <table>
+                <tr>
+                    <th>Annotation</th>
+                    <th>Source</th>
+                    <th>Example</th>
+                </tr>
+                <tr>
+                    <td><code>@PathVariable</code></td>
+                    <td>URL path</td>
+                    <td><code>/users/{id}</code> -> <code>@PathVariable Long id</code></td>
+                </tr>
+                <tr>
+                    <td><code>@RequestParam</code></td>
+                    <td>Query string</td>
+                    <td><code>/users?page=1</code> -> <code>@RequestParam int page</code></td>
+                </tr>
+                <tr>
+                    <td><code>@RequestBody</code></td>
+                    <td>Request body</td>
+                    <td>JSON -> Java object</td>
+                </tr>
+                <tr>
+                    <td><code>@RequestHeader</code></td>
+                    <td>HTTP header</td>
+                    <td><code>@RequestHeader("X-Token") String token</code></td>
+                </tr>
+            </table>
+
+            <h2>Configuration</h2>
+
+            <h3>application.yml</h3>
+            <pre><code><span class="comment"># Server configuration</span>
+server:
+  port: 8081
+
+<span class="comment"># Spring configuration</span>
+spring:
+  application:
+    name: user-service
+
+  <span class="comment"># Database</span>
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: postgres
+    password: postgres
+
+  <span class="comment"># JPA</span>
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+<span class="comment"># Custom properties</span>
+jwt:
+  secret: ${JWT_SECRET:default-secret}
+  expiration: 86400000
+</code></pre>
+
+            <h3>Profiles</h3>
+            <p>
+                Different configurations for different environments:
+            </p>
+
+            <pre><code><span class="comment"># application-dev.yml</span>
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_db
+
+<span class="comment"># application-prod.yml</span>
+spring:
+  datasource:
+    url: jdbc:postgresql://prod-db.example.com:5432/user_db
+</code></pre>
+
+            <p>Run with profile:</p>
+            <pre><code>java -jar app.jar --spring.profiles.active=prod</code></pre>
+
+            <h3>Reading Configuration</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtConfig</span> {
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.secret}"</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> secret;
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.expiration}"</span>)
+    <span class="keyword">private long</span> expiration;
+}
+
+<span class="comment">// Or using @ConfigurationProperties for type-safe config</span>
+<span class="annotation">@ConfigurationProperties</span>(prefix = <span class="string">"jwt"</span>)
+<span class="keyword">public record</span> <span class="class-name">JwtProperties</span>(<span class="class-name">String</span> secret, <span class="keyword">long</span> expiration) { }
+</code></pre>
+
+            <h2>Bean Definition</h2>
+            <p>
+                Custom beans are defined in <code>@Configuration</code> classes:
+            </p>
+
+            <pre><code><span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="class-name">SecurityConfig</span> {
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">PasswordEncoder</span> passwordEncoder() {
+        <span class="keyword">return new</span> <span class="class-name">BCryptPasswordEncoder</span>(<span class="number">12</span>);
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">ObjectMapper</span> objectMapper() {
+        <span class="keyword">return new</span> <span class="class-name">ObjectMapper</span>()
+            .registerModule(<span class="keyword">new</span> <span class="class-name">JavaTimeModule</span>())
+            .disable(<span class="class-name">SerializationFeature</span>.WRITE_DATES_AS_TIMESTAMPS);
+    }
+}
+</code></pre>
+
+            <h2>Exception Handling</h2>
+
+            <h3>Custom Exceptions</h3>
+            <pre><code><span class="keyword">public class</span> <span class="class-name">UserNotFoundException</span> <span class="keyword">extends</span> <span class="class-name">RuntimeException</span> {
+    <span class="keyword">public</span> UserNotFoundException(<span class="class-name">Long</span> id) {
+        <span class="keyword">super</span>(<span class="string">"User not found with id: "</span> + id);
+    }
+}
+</code></pre>
+
+            <h3>Global Exception Handler</h3>
+            <pre><code><span class="annotation">@RestControllerAdvice</span>
+<span class="keyword">public class</span> <span class="class-name">GlobalExceptionHandler</span> {
+
+    <span class="annotation">@ExceptionHandler</span>(<span class="class-name">UserNotFoundException</span>.<span class="keyword">class</span>)
+    <span class="annotation">@ResponseStatus</span>(<span class="class-name">HttpStatus</span>.NOT_FOUND)
+    <span class="keyword">public</span> <span class="class-name">ErrorResponse</span> handleUserNotFound(<span class="class-name">UserNotFoundException</span> ex) {
+        <span class="keyword">return new</span> <span class="class-name">ErrorResponse</span>(<span class="string">"USER_NOT_FOUND"</span>, ex.getMessage());
+    }
+
+    <span class="annotation">@ExceptionHandler</span>(<span class="class-name">MethodArgumentNotValidException</span>.<span class="keyword">class</span>)
+    <span class="annotation">@ResponseStatus</span>(<span class="class-name">HttpStatus</span>.BAD_REQUEST)
+    <span class="keyword">public</span> <span class="class-name">ErrorResponse</span> handleValidation(<span class="class-name">MethodArgumentNotValidException</span> ex) {
+        <span class="class-name">Map</span>&lt;<span class="class-name">String</span>, <span class="class-name">String</span>&gt; errors = <span class="keyword">new</span> <span class="class-name">HashMap</span>&lt;&gt;();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errors.put(error.getField(), error.getDefaultMessage())
+        );
+        <span class="keyword">return new</span> <span class="class-name">ErrorResponse</span>(<span class="string">"VALIDATION_ERROR"</span>, errors);
+    }
+}
+</code></pre>
+
+            <h2>Validation</h2>
+            <p>
+                Jakarta Bean Validation validates request data:
+            </p>
+
+            <pre><code><span class="keyword">public record</span> <span class="class-name">CreateUserRequest</span>(
+    <span class="annotation">@NotBlank</span>(message = <span class="string">"Username is required"</span>)
+    <span class="annotation">@Size</span>(min = <span class="number">3</span>, max = <span class="number">50</span>)
+    <span class="class-name">String</span> username,
+
+    <span class="annotation">@NotBlank</span>
+    <span class="annotation">@Email</span>(message = <span class="string">"Invalid email format"</span>)
+    <span class="class-name">String</span> email,
+
+    <span class="annotation">@NotBlank</span>
+    <span class="annotation">@Size</span>(min = <span class="number">8</span>, message = <span class="string">"Password must be at least 8 characters"</span>)
+    <span class="class-name">String</span> password
+) {}
+
+<span class="comment">// In controller - @Valid triggers validation</span>
+<span class="annotation">@PostMapping</span>
+<span class="keyword">public</span> <span class="class-name">UserResponse</span> create(<span class="annotation">@Valid</span> <span class="annotation">@RequestBody</span> <span class="class-name">CreateUserRequest</span> request) {
+    <span class="keyword">return</span> userService.createUser(request);
+}
+</code></pre>
+
+            <h2>Actuator</h2>
+            <p>
+                Spring Boot Actuator provides production-ready features:
+            </p>
+
+            <pre><code><span class="comment"># application.yml</span>
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+</code></pre>
+
+            <table>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>/actuator/health</code></td>
+                    <td>Application health status</td>
+                </tr>
+                <tr>
+                    <td><code>/actuator/info</code></td>
+                    <td>Application information</td>
+                </tr>
+                <tr>
+                    <td><code>/actuator/metrics</code></td>
+                    <td>Application metrics</td>
+                </tr>
+                <tr>
+                    <td><code>/actuator/prometheus</code></td>
+                    <td>Prometheus format metrics</td>
+                </tr>
+            </table>
+
+            <h2>Testing</h2>
+
+            <h3>Unit Tests</h3>
+            <pre><code><span class="annotation">@ExtendWith</span>(<span class="class-name">MockitoExtension</span>.<span class="keyword">class</span>)
+<span class="keyword">class</span> <span class="class-name">UserServiceTest</span> {
+
+    <span class="annotation">@Mock</span>
+    <span class="keyword">private</span> <span class="class-name">UserRepository</span> userRepository;
+
+    <span class="annotation">@InjectMocks</span>
+    <span class="keyword">private</span> <span class="class-name">UserServiceImpl</span> userService;
+
+    <span class="annotation">@Test</span>
+    <span class="keyword">void</span> shouldCreateUser() {
+        <span class="comment">// given</span>
+        <span class="class-name">CreateUserRequest</span> request = <span class="keyword">new</span> <span class="class-name">CreateUserRequest</span>(<span class="string">"john"</span>, <span class="string">"john@test.com"</span>, <span class="string">"password"</span>);
+        when(userRepository.existsByUsername(<span class="string">"john"</span>)).thenReturn(<span class="keyword">false</span>);
+
+        <span class="comment">// when</span>
+        <span class="class-name">UserResponse</span> result = userService.createUser(request);
+
+        <span class="comment">// then</span>
+        assertThat(result.username()).isEqualTo(<span class="string">"john"</span>);
+        verify(userRepository).save(any(<span class="class-name">User</span>.<span class="keyword">class</span>));
+    }
+}
+</code></pre>
+
+            <h3>Integration Tests</h3>
+            <pre><code><span class="annotation">@SpringBootTest</span>
+<span class="annotation">@AutoConfigureMockMvc</span>
+<span class="keyword">class</span> <span class="class-name">UserControllerIT</span> {
+
+    <span class="annotation">@Autowired</span>
+    <span class="keyword">private</span> <span class="class-name">MockMvc</span> mockMvc;
+
+    <span class="annotation">@Test</span>
+    <span class="keyword">void</span> shouldRegisterUser() <span class="keyword">throws</span> <span class="class-name">Exception</span> {
+        mockMvc.perform(post(<span class="string">"/api/auth/register"</span>)
+            .contentType(<span class="class-name">MediaType</span>.APPLICATION_JSON)
+            .content(<span class="string">"""
+                {"username": "john", "email": "john@test.com", "password": "password123"}
+                """</span>))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath(<span class="string">"$.username"</span>).value(<span class="string">"john"</span>));
+    }
+}
+</code></pre>
+
+            <h2>Running the Application</h2>
+
+            <h3>Development</h3>
+            <pre><code><span class="comment"># Using Maven</span>
+mvn spring-boot:run
+
+<span class="comment"># Or build and run JAR</span>
+mvn clean package
+java -jar target/user-service-1.0.0.jar
+</code></pre>
+
+            <h3>With Docker</h3>
+            <pre><code><span class="comment"># Build image</span>
+docker build -t user-service .
+
+<span class="comment"># Run container</span>
+docker run -p 8081:8081 user-service
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

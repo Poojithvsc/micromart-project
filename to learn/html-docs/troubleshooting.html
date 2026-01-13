@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Troubleshooting Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link active">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h1>Troubleshooting Guide</h1>
+            <p class="lead">
+                Common issues, their causes, and solutions when working with MicroMart.
+            </p>
+
+            <h2>Build Issues</h2>
+
+            <h3>Problem: Maven Build Fails with "Cannot find symbol"</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>error: cannot find symbol
+  symbol: class UserDTO
+  location: package com.micromart.common.dto</pre>
+            </div>
+            <p><strong>Cause:</strong> The common module hasn't been built/installed yet.</p>
+            <p><strong>Solution:</strong></p>
+            <pre><code><span class="comment"># Build and install common module first</span>
+cd common
+mvn clean install
+
+<span class="comment"># Then build the service</span>
+cd ../user-service
+mvn clean install</code></pre>
+
+            <h3>Problem: Lombok Annotations Not Working</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>error: cannot find symbol
+  symbol: method getUsername()
+  location: variable user of type User</pre>
+            </div>
+            <p><strong>Cause:</strong> Lombok annotation processor not enabled in IDE.</p>
+            <p><strong>Solution:</strong></p>
+            <ul>
+                <li><strong>IntelliJ:</strong> Settings > Build > Compiler > Annotation Processors > Enable</li>
+                <li><strong>VS Code:</strong> Install "Lombok Annotations Support" extension</li>
+                <li>After enabling, rebuild project and restart IDE</li>
+            </ul>
+
+            <h3>Problem: MapStruct Mappers Return Null</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>UserDTO result = userMapper.toDTO(user);
+// result is null or has null fields</pre>
+            </div>
+            <p><strong>Cause:</strong> MapStruct needs to run AFTER Lombok in annotation processing.</p>
+            <p><strong>Solution:</strong> Check pom.xml has correct order:</p>
+            <pre><code>&lt;annotationProcessorPaths&gt;
+  &lt;path&gt;
+    &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+    &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+  &lt;/path&gt;
+  <span class="comment">&lt;!-- MapStruct MUST come after Lombok --&gt;</span>
+  &lt;path&gt;
+    &lt;groupId&gt;org.mapstruct&lt;/groupId&gt;
+    &lt;artifactId&gt;mapstruct-processor&lt;/artifactId&gt;
+  &lt;/path&gt;
+&lt;/annotationProcessorPaths&gt;</code></pre>
+
+            <h2>Startup Issues</h2>
+
+            <h3>Problem: Service Won't Start - Port Already in Use</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>Web server failed to start. Port 8080 was already in use.</pre>
+            </div>
+            <p><strong>Solution:</strong></p>
+            <pre><code><span class="comment"># Windows - Find and kill process</span>
+netstat -ano | findstr :8080
+taskkill /PID &lt;PID_NUMBER&gt; /F
+
+<span class="comment"># Linux/Mac</span>
+lsof -i :8080
+kill -9 &lt;PID&gt;</code></pre>
+
+            <h3>Problem: Service Can't Connect to Database</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>Unable to obtain connection from database
+Connection refused: localhost:5433</pre>
+            </div>
+            <p><strong>Causes & Solutions:</strong></p>
+            <ol>
+                <li><strong>Docker not running:</strong>
+                    <pre><code>docker-compose up -d</code></pre>
+                </li>
+                <li><strong>Wrong port:</strong> Check application.yml matches docker-compose.yml
+                    <pre><code><span class="comment"># application.yml</span>
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/user_db  <span class="comment"># Port must match!</span></code></pre>
+                </li>
+                <li><strong>Database not created:</strong>
+                    <pre><code><span class="comment"># Connect to PostgreSQL</span>
+docker exec -it postgres-user psql -U postgres
+\l  <span class="comment"># List databases</span></code></pre>
+                </li>
+            </ol>
+
+            <h3>Problem: Service Not Registering with Eureka</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <p>Service starts but doesn't appear in Eureka dashboard at http://localhost:8761</p>
+            </div>
+            <p><strong>Causes & Solutions:</strong></p>
+            <ol>
+                <li><strong>Eureka server not running:</strong> Start eureka-server first!</li>
+                <li><strong>Wrong Eureka URL:</strong>
+                    <pre><code>eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/  <span class="comment"># Check this URL</span></code></pre>
+                </li>
+                <li><strong>Missing annotation:</strong> Ensure main class has:
+                    <pre><code>@EnableDiscoveryClient  <span class="comment">// or @EnableEurekaClient</span>
+@SpringBootApplication
+public class UserServiceApplication { }</code></pre>
+                </li>
+            </ol>
+
+            <h2>Runtime Issues</h2>
+
+            <h3>Problem: 401 Unauthorized on All Requests</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>HTTP 401 Unauthorized
+"error": "Full authentication is required"</pre>
+            </div>
+            <p><strong>Causes & Solutions:</strong></p>
+            <ol>
+                <li><strong>Missing JWT token:</strong>
+                    <pre><code><span class="comment"># Add Authorization header</span>
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://localhost:8080/api/users/me</code></pre>
+                </li>
+                <li><strong>Token expired:</strong> Login again to get fresh token</li>
+                <li><strong>Wrong secret key:</strong> All services must use same JWT secret in application.yml</li>
+            </ol>
+
+            <h3>Problem: 403 Forbidden</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>HTTP 403 Forbidden
+"error": "Access Denied"</pre>
+            </div>
+            <p><strong>Cause:</strong> User doesn't have required role.</p>
+            <p><strong>Solution:</strong> Check endpoint security and user roles:</p>
+            <pre><code><span class="comment">// In SecurityConfig.java</span>
+.requestMatchers("/api/admin/**").hasRole("ADMIN")  <span class="comment">// Requires ADMIN role</span>
+
+<span class="comment">// User must have Role.ADMIN assigned</span></code></pre>
+
+            <h3>Problem: Feign Client Returns 404</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>feign.FeignException$NotFound: [404] during [GET] to
+[http://PRODUCT-SERVICE/api/products/123]</pre>
+            </div>
+            <p><strong>Causes & Solutions:</strong></p>
+            <ol>
+                <li><strong>Target service not running:</strong> Start the service</li>
+                <li><strong>Wrong service name:</strong> Must match Eureka registration
+                    <pre><code>@FeignClient(name = "PRODUCT-SERVICE")  <span class="comment">// Case-sensitive!</span></code></pre>
+                </li>
+                <li><strong>Wrong endpoint path:</strong> Check path matches controller
+                    <pre><code><span class="comment">// FeignClient interface</span>
+@GetMapping("/api/products/{id}")  <span class="comment">// Must match ProductController</span>
+ProductDTO getProduct(@PathVariable Long id);</code></pre>
+                </li>
+            </ol>
+
+            <h3>Problem: LazyInitializationException</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>org.hibernate.LazyInitializationException:
+could not initialize proxy - no Session</pre>
+            </div>
+            <p><strong>Cause:</strong> Accessing lazy-loaded relationship outside transaction.</p>
+            <p><strong>Solutions:</strong></p>
+            <pre><code><span class="comment">// Option 1: Eager fetch for this query</span>
+@Query("SELECT o FROM Order o JOIN FETCH o.items WHERE o.id = :id")
+Optional&lt;Order&gt; findByIdWithItems(@Param("id") Long id);
+
+<span class="comment">// Option 2: Use @Transactional on service method</span>
+@Transactional(readOnly = true)
+public OrderDTO getOrderWithItems(Long id) {
+    Order order = orderRepository.findById(id).orElseThrow();
+    order.getItems().size();  <span class="comment">// Force load within transaction</span>
+    return orderMapper.toDTO(order);
+}
+
+<span class="comment">// Option 3: Change relationship to EAGER (not recommended)</span>
+@OneToMany(fetch = FetchType.EAGER)  <span class="comment">// Avoid - causes N+1</span></code></pre>
+
+            <h3>Problem: OptimisticLockException</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>org.springframework.orm.ObjectOptimisticLockingFailureException:
+Row was updated or deleted by another transaction</pre>
+            </div>
+            <p><strong>Cause:</strong> Concurrent modification of same entity.</p>
+            <p><strong>Solution:</strong> Implement retry logic:</p>
+            <pre><code>@Retryable(value = OptimisticLockException.class, maxAttempts = 3)
+public void updateInventory(Long productId, int quantity) {
+    Inventory inventory = inventoryRepo.findById(productId).orElseThrow();
+    inventory.setQuantity(inventory.getQuantity() - quantity);
+    inventoryRepo.save(inventory);  <span class="comment">// Will retry if version mismatch</span>
+}</code></pre>
+
+            <h2>Kafka Issues</h2>
+
+            <h3>Problem: Kafka Connection Refused</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>Connection to node -1 could not be established.
+Broker may not be available.</pre>
+            </div>
+            <p><strong>Solutions:</strong></p>
+            <ol>
+                <li><strong>Start Kafka:</strong>
+                    <pre><code>docker-compose up -d kafka</code></pre>
+                </li>
+                <li><strong>Check Kafka logs:</strong>
+                    <pre><code>docker-compose logs -f kafka</code></pre>
+                </li>
+                <li><strong>Verify bootstrap servers:</strong>
+                    <pre><code>spring:
+  kafka:
+    bootstrap-servers: localhost:9092  <span class="comment"># Must be reachable</span></code></pre>
+                </li>
+            </ol>
+
+            <h3>Problem: Messages Not Being Consumed</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <p>Producer sends messages but consumer never receives them.</p>
+            </div>
+            <p><strong>Causes & Solutions:</strong></p>
+            <ol>
+                <li><strong>Topic name mismatch:</strong>
+                    <pre><code><span class="comment">// Producer</span>
+kafkaTemplate.send("order-events", event);
+
+<span class="comment">// Consumer - topic name MUST match exactly</span>
+@KafkaListener(topics = "order-events")
+public void handleOrderEvent(OrderEvent event) { }</code></pre>
+                </li>
+                <li><strong>Consumer group already processed:</strong>
+                    <pre><code><span class="comment"># Reset consumer offset to beginning</span>
+docker exec -it kafka kafka-consumer-groups \
+  --bootstrap-server localhost:9092 \
+  --group my-group \
+  --reset-offsets \
+  --to-earliest \
+  --topic order-events \
+  --execute</code></pre>
+                </li>
+                <li><strong>Deserialization error:</strong> Check producer and consumer use same serializer</li>
+            </ol>
+
+            <h2>Testing Issues</h2>
+
+            <h3>Problem: Tests Fail with "No qualifying bean"</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>NoSuchBeanDefinitionException: No qualifying bean of type
+'UserRepository' available</pre>
+            </div>
+            <p><strong>Solution:</strong> Use correct test slice annotations:</p>
+            <pre><code><span class="comment">// For repository tests</span>
+@DataJpaTest  <span class="comment">// Only loads JPA components</span>
+class UserRepositoryTest { }
+
+<span class="comment">// For service tests with mocks</span>
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @Mock UserRepository userRepository;
+    @InjectMocks UserServiceImpl userService;
+}
+
+<span class="comment">// For full integration tests</span>
+@SpringBootTest
+class UserIntegrationTest { }</code></pre>
+
+            <h3>Problem: Test Database Conflicts</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <pre>Tests fail because they affect each other's data</pre>
+            </div>
+            <p><strong>Solution:</strong> Use @Transactional on tests (auto-rollback):</p>
+            <pre><code>@DataJpaTest
+@Transactional  <span class="comment">// Each test runs in transaction, rolled back after</span>
+class UserRepositoryTest {
+    @Test
+    void testSaveUser() {
+        <span class="comment">// Changes are automatically rolled back</span>
+    }
+}</code></pre>
+
+            <h2>Performance Issues</h2>
+
+            <h3>Problem: N+1 Query Problem</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Symptoms</div>
+                <p>Loading 100 orders results in 101 database queries.</p>
+            </div>
+            <p><strong>Solution:</strong> Use JOIN FETCH or EntityGraph:</p>
+            <pre><code><span class="comment">// Option 1: JOIN FETCH in query</span>
+@Query("SELECT o FROM Order o JOIN FETCH o.items")
+List&lt;Order&gt; findAllWithItems();
+
+<span class="comment">// Option 2: @EntityGraph</span>
+@EntityGraph(attributePaths = {"items"})
+List&lt;Order&gt; findAll();</code></pre>
+
+            <h3>Problem: Slow API Responses</h3>
+            <p><strong>Debugging Steps:</strong></p>
+            <ol>
+                <li><strong>Enable SQL logging:</strong>
+                    <pre><code>spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true</code></pre>
+                </li>
+                <li><strong>Check for N+1 queries</strong></li>
+                <li><strong>Add indexes to frequently queried columns</strong></li>
+                <li><strong>Consider caching with Redis</strong></li>
+            </ol>
+
+            <h2>Quick Debug Checklist</h2>
+            <table>
+                <tr><th>Issue</th><th>First Thing to Check</th></tr>
+                <tr><td>Build fails</td><td>Run <code>mvn clean install</code> on common first</td></tr>
+                <tr><td>Can't start</td><td>Check port availability, Docker running</td></tr>
+                <tr><td>401/403 errors</td><td>Verify JWT token and user roles</td></tr>
+                <tr><td>Eureka issues</td><td>Start eureka-server FIRST</td></tr>
+                <tr><td>Feign 404</td><td>Check service name matches Eureka exactly</td></tr>
+                <tr><td>Lazy loading</td><td>Add @Transactional or use JOIN FETCH</td></tr>
+                <tr><td>Kafka silent</td><td>Check topic names match exactly</td></tr>
+                <tr><td>Tests fail</td><td>Use correct test slice annotation</td></tr>
+            </table>
+
+            <div class="info-box">
+                <div class="info-box-title">Pro Tip: Logging Levels</div>
+                <p>Temporarily increase logging to debug issues:</p>
+                <pre><code>logging:
+  level:
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: DEBUG
+    com.micromart: DEBUG</code></pre>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

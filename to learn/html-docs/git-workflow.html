@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Git Workflow Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link active">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h1>Git Workflow Guide</h1>
+            <p class="lead">
+                How to use Git effectively for MicroMart development: branching, commits, and collaboration.
+            </p>
+
+            <h2>Repository Structure</h2>
+            <pre><code>micromart/
+  .git/                    <span class="comment"># Git repository data</span>
+  .gitignore               <span class="comment"># Files to ignore</span>
+  pom.xml                  <span class="comment"># Parent POM</span>
+  common/                  <span class="comment"># Shared module</span>
+  eureka-server/           <span class="comment"># Eureka module</span>
+  api-gateway/             <span class="comment"># Gateway module</span>
+  user-service/            <span class="comment"># User service module</span>
+  product-service/         <span class="comment"># Product service module</span>
+  order-service/           <span class="comment"># Order service module</span>
+</code></pre>
+
+            <h2>Branching Strategy</h2>
+            <div class="architecture-box">
+                <pre style="text-align: left; font-size: 0.9rem;">
+main (or master)
+  │
+  ├── Protected branch
+  ├── Always deployable
+  └── Merged via Pull Request only
+
+dev
+  │
+  ├── Integration branch
+  ├── Features merged here first
+  └── Tested before merging to main
+
+feature/add-payment
+  │
+  ├── Your working branch
+  ├── Created from dev
+  └── Short-lived
+                </pre>
+            </div>
+
+            <h2>Daily Workflow</h2>
+
+            <h3>1. Start a New Feature</h3>
+            <pre><code><span class="comment"># Always start from latest dev</span>
+git checkout dev
+git pull origin dev
+
+<span class="comment"># Create feature branch</span>
+git checkout -b feature/add-payment-integration
+
+<span class="comment"># Branch naming conventions:</span>
+<span class="comment"># feature/description - New features</span>
+<span class="comment"># fix/description     - Bug fixes</span>
+<span class="comment"># refactor/description - Code improvements</span>
+<span class="comment"># docs/description    - Documentation</span>
+</code></pre>
+
+            <h3>2. Make Changes and Commit</h3>
+            <pre><code><span class="comment"># Check what you've changed</span>
+git status
+
+<span class="comment"># See actual changes</span>
+git diff
+
+<span class="comment"># Stage specific files</span>
+git add user-service/src/main/java/com/micromart/user/service/PaymentService.java
+
+<span class="comment"># Or stage all changes</span>
+git add .
+
+<span class="comment"># Commit with meaningful message</span>
+git commit -m "feat: add payment processing to user service
+
+- Add PaymentService for handling payments
+- Integrate with external payment gateway
+- Add PaymentRequest and PaymentResponse DTOs"
+</code></pre>
+
+            <h3>Commit Message Format</h3>
+            <pre><code><span class="comment"># Format: type: subject</span>
+<span class="comment">#</span>
+<span class="comment"># Types:</span>
+<span class="comment"># feat:     New feature</span>
+<span class="comment"># fix:      Bug fix</span>
+<span class="comment"># docs:     Documentation</span>
+<span class="comment"># refactor: Code change that neither fixes bug nor adds feature</span>
+<span class="comment"># test:     Adding tests</span>
+<span class="comment"># chore:    Maintenance tasks</span>
+
+<span class="comment"># Examples:</span>
+git commit -m "feat: add JWT authentication to user service"
+git commit -m "fix: resolve N+1 query in order retrieval"
+git commit -m "refactor: extract common validation logic"
+git commit -m "docs: update API documentation"
+</code></pre>
+
+            <h3>3. Push and Create Pull Request</h3>
+            <pre><code><span class="comment"># Push your branch</span>
+git push origin feature/add-payment-integration
+
+<span class="comment"># First time pushing a branch:</span>
+git push -u origin feature/add-payment-integration
+</code></pre>
+
+            <h3>4. Keep Your Branch Updated</h3>
+            <pre><code><span class="comment"># If dev has new changes while you're working:</span>
+
+<span class="comment"># Option 1: Merge (safer)</span>
+git checkout dev
+git pull origin dev
+git checkout feature/add-payment-integration
+git merge dev
+
+<span class="comment"># Option 2: Rebase (cleaner history)</span>
+git fetch origin
+git rebase origin/dev
+
+<span class="comment"># Resolve any conflicts, then:</span>
+git add .
+git rebase --continue
+</code></pre>
+
+            <h2>Common Git Commands</h2>
+            <table>
+                <tr><th>Command</th><th>Purpose</th></tr>
+                <tr><td><code>git status</code></td><td>See changed files</td></tr>
+                <tr><td><code>git diff</code></td><td>See actual changes</td></tr>
+                <tr><td><code>git log --oneline</code></td><td>View commit history</td></tr>
+                <tr><td><code>git branch</code></td><td>List branches</td></tr>
+                <tr><td><code>git checkout branch</code></td><td>Switch branches</td></tr>
+                <tr><td><code>git checkout -b name</code></td><td>Create and switch</td></tr>
+                <tr><td><code>git stash</code></td><td>Temporarily save changes</td></tr>
+                <tr><td><code>git stash pop</code></td><td>Restore stashed changes</td></tr>
+                <tr><td><code>git reset --hard HEAD</code></td><td>Discard all changes</td></tr>
+                <tr><td><code>git cherry-pick hash</code></td><td>Copy a commit</td></tr>
+            </table>
+
+            <h2>Handling Merge Conflicts</h2>
+            <pre><code><span class="comment"># When you see conflict markers:</span>
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+<span class="comment">// Your changes</span>
+=======
+<span class="comment">// Changes from other branch</span>
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; dev
+
+<span class="comment"># 1. Edit the file to resolve</span>
+<span class="comment"># 2. Remove the conflict markers</span>
+<span class="comment"># 3. Stage the resolved file</span>
+git add resolved-file.java
+
+<span class="comment"># 4. Continue the merge/rebase</span>
+git merge --continue
+<span class="comment"># or</span>
+git rebase --continue
+</code></pre>
+
+            <h2>.gitignore Essentials</h2>
+            <pre><code><span class="comment"># Build outputs</span>
+target/
+build/
+*.class
+*.jar
+
+<span class="comment"># IDE files</span>
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+
+<span class="comment"># Environment files (NEVER commit!)</span>
+.env
+*.env
+application-local.yml
+
+<span class="comment"># Logs</span>
+*.log
+logs/
+
+<span class="comment"># OS files</span>
+.DS_Store
+Thumbs.db
+</code></pre>
+
+            <div class="info-box danger">
+                <div class="info-box-title">Never Commit These!</div>
+                <ul>
+                    <li>Passwords or secrets</li>
+                    <li>.env files</li>
+                    <li>AWS credentials</li>
+                    <li>Private keys</li>
+                    <li>application-prod.yml with real credentials</li>
+                </ul>
+            </div>
+
+            <h2>Useful Aliases</h2>
+            <pre><code><span class="comment"># Add to ~/.gitconfig</span>
+[alias]
+    st = status
+    co = checkout
+    br = branch
+    ci = commit
+    lg = log --oneline --graph --all
+    last = log -1 HEAD
+    unstage = reset HEAD --
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

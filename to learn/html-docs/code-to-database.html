@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Code to Database Mapping</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link active">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h1>Code to Database Mapping</h1>
+            <p class="lead">
+                How Java entities translate to database tables, columns, and constraints.
+            </p>
+
+            <h2>The Big Picture</h2>
+            <div class="architecture-box">
+                <pre style="text-align: left; font-size: 0.9rem;">
+Java World                          Database World
+-----------                         --------------
+@Entity class User         --->     TABLE users
+private Long id            --->     COLUMN id BIGSERIAL PRIMARY KEY
+private String email       --->     COLUMN email VARCHAR(255)
+@OneToMany List&lt;Order&gt;     --->     FOREIGN KEY in orders table
+@Version Long version      --->     COLUMN version BIGINT
+                </pre>
+            </div>
+
+            <h2>User Entity Mapping</h2>
+
+            <h3>Java Entity</h3>
+            <pre><code>@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Role role;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Version
+    private Long version;
+}</code></pre>
+
+            <h3>Generated SQL Table</h3>
+            <pre><code>CREATE TABLE users (
+    id              BIGSERIAL PRIMARY KEY,
+    username        VARCHAR(50) NOT NULL UNIQUE,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password        VARCHAR(255) NOT NULL,
+    first_name      VARCHAR(100),
+    last_name       VARCHAR(100),
+    role            VARCHAR(20),
+    created_at      TIMESTAMP,
+    version         BIGINT
+);
+
+<span class="comment">-- Hibernate also creates indexes for unique columns</span>
+CREATE UNIQUE INDEX uk_users_username ON users(username);
+CREATE UNIQUE INDEX uk_users_email ON users(email);</code></pre>
+
+            <h2>Annotation to SQL Reference</h2>
+            <table>
+                <tr>
+                    <th>Java Annotation</th>
+                    <th>SQL Equivalent</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>@Entity</code></td>
+                    <td><code>CREATE TABLE</code></td>
+                    <td>Marks class as database table</td>
+                </tr>
+                <tr>
+                    <td><code>@Table(name="x")</code></td>
+                    <td><code>TABLE x</code></td>
+                    <td>Custom table name</td>
+                </tr>
+                <tr>
+                    <td><code>@Id</code></td>
+                    <td><code>PRIMARY KEY</code></td>
+                    <td>Primary key column</td>
+                </tr>
+                <tr>
+                    <td><code>@GeneratedValue(IDENTITY)</code></td>
+                    <td><code>BIGSERIAL</code></td>
+                    <td>Auto-increment</td>
+                </tr>
+                <tr>
+                    <td><code>@Column(nullable=false)</code></td>
+                    <td><code>NOT NULL</code></td>
+                    <td>Required field</td>
+                </tr>
+                <tr>
+                    <td><code>@Column(unique=true)</code></td>
+                    <td><code>UNIQUE</code></td>
+                    <td>No duplicates allowed</td>
+                </tr>
+                <tr>
+                    <td><code>@Column(length=50)</code></td>
+                    <td><code>VARCHAR(50)</code></td>
+                    <td>Max string length</td>
+                </tr>
+                <tr>
+                    <td><code>@Column(name="x")</code></td>
+                    <td><code>COLUMN x</code></td>
+                    <td>Custom column name</td>
+                </tr>
+                <tr>
+                    <td><code>@Enumerated(STRING)</code></td>
+                    <td><code>VARCHAR</code></td>
+                    <td>Store enum as text</td>
+                </tr>
+                <tr>
+                    <td><code>@Version</code></td>
+                    <td><code>BIGINT</code> + check</td>
+                    <td>Optimistic locking</td>
+                </tr>
+            </table>
+
+            <h2>Product Entity with Relationships</h2>
+
+            <h3>Java Entity</h3>
+            <pre><code>@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(length = 2000)
+    private String description;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    <span class="comment">// One Product has One Inventory (bidirectional)</span>
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL)
+    private Inventory inventory;
+
+    <span class="comment">// One Product belongs to One Category</span>
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @Version
+    private Long version;
+}</code></pre>
+
+            <h3>Generated SQL Tables</h3>
+            <pre><code><span class="comment">-- Products table</span>
+CREATE TABLE products (
+    id              BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL,
+    description     VARCHAR(2000),
+    price           DECIMAL(10,2) NOT NULL,
+    image_url       VARCHAR(255),
+    category_id     BIGINT,
+    version         BIGINT,
+
+    <span class="comment">-- Foreign key to categories</span>
+    CONSTRAINT fk_product_category
+        FOREIGN KEY (category_id)
+        REFERENCES categories(id)
+);
+
+<span class="comment">-- Inventory table (owns the relationship)</span>
+CREATE TABLE inventory (
+    id              BIGSERIAL PRIMARY KEY,
+    product_id      BIGINT NOT NULL UNIQUE,
+    quantity        INTEGER NOT NULL,
+    reserved        INTEGER DEFAULT 0,
+    version         BIGINT,
+
+    <span class="comment">-- Foreign key to products</span>
+    CONSTRAINT fk_inventory_product
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+);</code></pre>
+
+            <h2>Order Entity with Complex Relationships</h2>
+
+            <h3>Java Entity</h3>
+            <pre><code>@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private OrderStatus status;
+
+    @Column(name = "total_amount", precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+
+    <span class="comment">// One Order has Many OrderItems</span>
+    @OneToMany(mappedBy = "order",
+               cascade = CascadeType.ALL,
+               orphanRemoval = true)
+    private List&lt;OrderItem&gt; items = new ArrayList&lt;&gt;();
+
+    <span class="comment">// Embedded value object for shipping</span>
+    @Embedded
+    private ShippingAddress shippingAddress;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+}
+
+@Entity
+@Table(name = "order_items")
+public class OrderItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    <span class="comment">// Many OrderItems belong to One Order</span>
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+
+    @Column(name = "product_id", nullable = false)
+    private Long productId;
+
+    @Column(nullable = false)
+    private Integer quantity;
+
+    @Column(name = "unit_price", precision = 10, scale = 2)
+    private BigDecimal unitPrice;
+}</code></pre>
+
+            <h3>Generated SQL Tables</h3>
+            <pre><code><span class="comment">-- Orders table</span>
+CREATE TABLE orders (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT NOT NULL,
+    status          VARCHAR(20) NOT NULL,
+    total_amount    DECIMAL(12,2),
+
+    <span class="comment">-- Embedded ShippingAddress fields</span>
+    street          VARCHAR(255),
+    city            VARCHAR(100),
+    state           VARCHAR(100),
+    zip_code        VARCHAR(20),
+    country         VARCHAR(100),
+
+    created_at      TIMESTAMP
+);
+
+<span class="comment">-- Order Items table</span>
+CREATE TABLE order_items (
+    id              BIGSERIAL PRIMARY KEY,
+    order_id        BIGINT NOT NULL,
+    product_id      BIGINT NOT NULL,
+    quantity        INTEGER NOT NULL,
+    unit_price      DECIMAL(10,2),
+
+    <span class="comment">-- Foreign key to orders</span>
+    CONSTRAINT fk_orderitem_order
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE CASCADE  <span class="comment">-- orphanRemoval = true</span>
+);
+
+<span class="comment">-- Index for faster lookups</span>
+CREATE INDEX idx_orderitems_order ON order_items(order_id);</code></pre>
+
+            <h2>Relationship Types Explained</h2>
+
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-title">@OneToOne</div>
+                    <p>One entity relates to exactly one other entity.</p>
+                    <pre><code><span class="comment">// Product.java</span>
+@OneToOne(mappedBy = "product")
+private Inventory inventory;
+
+<span class="comment">// Inventory.java (owns relationship)</span>
+@OneToOne
+@JoinColumn(name = "product_id")
+private Product product;</code></pre>
+                    <p><strong>SQL Result:</strong></p>
+                    <pre><code>inventory.product_id UNIQUE FK</code></pre>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">@ManyToOne</div>
+                    <p>Many entities relate to one entity.</p>
+                    <pre><code><span class="comment">// OrderItem.java</span>
+@ManyToOne
+@JoinColumn(name = "order_id")
+private Order order;</code></pre>
+                    <p><strong>SQL Result:</strong></p>
+                    <pre><code>order_items.order_id FK</code></pre>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">@OneToMany</div>
+                    <p>One entity has many related entities.</p>
+                    <pre><code><span class="comment">// Order.java</span>
+@OneToMany(mappedBy = "order")
+private List&lt;OrderItem&gt; items;</code></pre>
+                    <p><strong>SQL Result:</strong></p>
+                    <pre><code><span class="comment">No column here - FK is on "many" side</span></code></pre>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">@ManyToMany</div>
+                    <p>Many-to-many creates a join table.</p>
+                    <pre><code><span class="comment">// Product.java</span>
+@ManyToMany
+@JoinTable(name = "product_tags",
+  joinColumns = @JoinColumn(name = "product_id"),
+  inverseJoinColumns = @JoinColumn(name = "tag_id"))
+private Set&lt;Tag&gt; tags;</code></pre>
+                    <p><strong>SQL Result:</strong></p>
+                    <pre><code>CREATE TABLE product_tags (
+  product_id BIGINT,
+  tag_id BIGINT
+);</code></pre>
+                </div>
+            </div>
+
+            <h2>@Embedded Value Objects</h2>
+            <p>Value objects are embedded directly into the parent table.</p>
+
+            <h3>Java Code</h3>
+            <pre><code><span class="comment">// Value Object - no @Entity, no table</span>
+@Embeddable
+public class ShippingAddress {
+    private String street;
+    private String city;
+    private String state;
+
+    @Column(name = "zip_code")
+    private String zipCode;
+
+    private String country;
+}
+
+<span class="comment">// Entity using the value object</span>
+@Entity
+public class Order {
+    @Id
+    private Long id;
+
+    @Embedded
+    private ShippingAddress shippingAddress;
+}</code></pre>
+
+            <h3>SQL Result</h3>
+            <pre><code>CREATE TABLE orders (
+    id          BIGSERIAL PRIMARY KEY,
+    <span class="comment">-- ShippingAddress fields embedded here</span>
+    street      VARCHAR(255),
+    city        VARCHAR(255),
+    state       VARCHAR(255),
+    zip_code    VARCHAR(255),
+    country     VARCHAR(255)
+);</code></pre>
+
+            <h2>Repository Methods to SQL</h2>
+            <table>
+                <tr>
+                    <th>Repository Method</th>
+                    <th>Generated SQL</th>
+                </tr>
+                <tr>
+                    <td><code>findById(1L)</code></td>
+                    <td><code>SELECT * FROM users WHERE id = 1</code></td>
+                </tr>
+                <tr>
+                    <td><code>findAll()</code></td>
+                    <td><code>SELECT * FROM users</code></td>
+                </tr>
+                <tr>
+                    <td><code>findByEmail("a@b.com")</code></td>
+                    <td><code>SELECT * FROM users WHERE email = 'a@b.com'</code></td>
+                </tr>
+                <tr>
+                    <td><code>findByStatusAndUserId(PENDING, 5)</code></td>
+                    <td><code>SELECT * FROM orders WHERE status = 'PENDING' AND user_id = 5</code></td>
+                </tr>
+                <tr>
+                    <td><code>findByPriceGreaterThan(100)</code></td>
+                    <td><code>SELECT * FROM products WHERE price > 100</code></td>
+                </tr>
+                <tr>
+                    <td><code>findByNameContainingIgnoreCase("phone")</code></td>
+                    <td><code>SELECT * FROM products WHERE LOWER(name) LIKE '%phone%'</code></td>
+                </tr>
+                <tr>
+                    <td><code>save(entity)</code></td>
+                    <td><code>INSERT INTO... / UPDATE...</code></td>
+                </tr>
+                <tr>
+                    <td><code>deleteById(1L)</code></td>
+                    <td><code>DELETE FROM users WHERE id = 1</code></td>
+                </tr>
+            </table>
+
+            <h2>Cascade Operations</h2>
+            <div class="info-box">
+                <div class="info-box-title">CascadeType Explained</div>
+                <table>
+                    <tr><th>Cascade Type</th><th>Effect</th></tr>
+                    <tr>
+                        <td><code>CascadeType.PERSIST</code></td>
+                        <td>Saving parent saves children too</td>
+                    </tr>
+                    <tr>
+                        <td><code>CascadeType.MERGE</code></td>
+                        <td>Updating parent updates children</td>
+                    </tr>
+                    <tr>
+                        <td><code>CascadeType.REMOVE</code></td>
+                        <td>Deleting parent deletes children</td>
+                    </tr>
+                    <tr>
+                        <td><code>CascadeType.ALL</code></td>
+                        <td>All of the above</td>
+                    </tr>
+                    <tr>
+                        <td><code>orphanRemoval = true</code></td>
+                        <td>Removing from collection deletes from DB</td>
+                    </tr>
+                </table>
+            </div>
+
+            <pre><code><span class="comment">// With CascadeType.ALL</span>
+Order order = new Order();
+order.getItems().add(new OrderItem(...));
+order.getItems().add(new OrderItem(...));
+
+orderRepository.save(order);  <span class="comment">// Saves order AND both items!</span>
+
+<span class="comment">// Generated SQL:</span>
+<span class="comment">// INSERT INTO orders ...</span>
+<span class="comment">// INSERT INTO order_items ... (order_id = new order id)</span>
+<span class="comment">// INSERT INTO order_items ... (order_id = new order id)</span></code></pre>
+
+            <h2>Complete Database Schema</h2>
+            <div class="architecture-box">
+                <pre style="text-align: left; font-size: 0.85rem;">
+┌─────────────────────────────────────────────────────────────────┐
+│                        user_db (Port 5433)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  users                                                           │
+│  ├── id (PK)                                                    │
+│  ├── username (UNIQUE)                                          │
+│  ├── email (UNIQUE)                                             │
+│  ├── password                                                   │
+│  ├── first_name, last_name                                      │
+│  ├── role                                                       │
+│  └── version                                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      product_db (Port 5434)                      │
+├─────────────────────────────────────────────────────────────────┤
+│  categories                    products                          │
+│  ├── id (PK)                   ├── id (PK)                      │
+│  ├── name                      ├── name                         │
+│  └── description               ├── description                  │
+│         ▲                      ├── price                        │
+│         │                      ├── image_url                    │
+│         └──────────────────────├── category_id (FK)             │
+│                                └── version                       │
+│                                       │                          │
+│  inventory                            │                          │
+│  ├── id (PK)                         │                          │
+│  ├── product_id (FK UNIQUE) ─────────┘                          │
+│  ├── quantity                                                   │
+│  ├── reserved                                                   │
+│  └── version                                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       order_db (Port 5435)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  orders                        order_items                       │
+│  ├── id (PK)                   ├── id (PK)                      │
+│  ├── user_id                   ├── order_id (FK) ───────────────┤
+│  ├── status                    ├── product_id                   │
+│  ├── total_amount              ├── quantity                     │
+│  ├── street, city, state...    └── unit_price                   │
+│  └── created_at                                                 │
+└─────────────────────────────────────────────────────────────────┘
+                </pre>
+            </div>
+
+            <div class="info-box warning">
+                <div class="info-box-title">Database Per Service Pattern</div>
+                <p>Each microservice has its OWN database. There are NO foreign keys between services' databases. Cross-service references use IDs only (user_id, product_id) and are resolved via Feign calls.</p>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

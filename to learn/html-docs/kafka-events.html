@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Kafka & Events Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link active">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Kafka & Events</span>
+            </div>
+
+            <h1>Kafka & Event-Driven Architecture</h1>
+            <p class="lead">
+                MicroMart uses Apache Kafka for asynchronous communication between services.
+                This enables loose coupling, scalability, and real-time event processing.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Apache Kafka</span>
+                <span class="tech-item">Spring Kafka</span>
+                <span class="tech-item">Event Sourcing</span>
+                <span class="tech-item">Pub/Sub Pattern</span>
+            </div>
+
+            <h2>What is Apache Kafka?</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">Kafka = Distributed Message Queue</div>
+                <p>
+                    Kafka is a distributed streaming platform. Think of it as a highly scalable,
+                    durable message queue. Producers send messages to topics, and consumers
+                    read from those topics. Messages are persisted and can be replayed.
+                </p>
+            </div>
+
+            <h3>Key Concepts</h3>
+            <table>
+                <tr>
+                    <th>Term</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><strong>Topic</strong></td>
+                    <td>A named channel for messages (like "user-events", "order-events")</td>
+                </tr>
+                <tr>
+                    <td><strong>Producer</strong></td>
+                    <td>Sends messages to topics</td>
+                </tr>
+                <tr>
+                    <td><strong>Consumer</strong></td>
+                    <td>Reads messages from topics</td>
+                </tr>
+                <tr>
+                    <td><strong>Consumer Group</strong></td>
+                    <td>Multiple consumers sharing the load of reading a topic</td>
+                </tr>
+                <tr>
+                    <td><strong>Partition</strong></td>
+                    <td>Topics are split into partitions for parallelism</td>
+                </tr>
+                <tr>
+                    <td><strong>Offset</strong></td>
+                    <td>Position of a message within a partition</td>
+                </tr>
+                <tr>
+                    <td><strong>Broker</strong></td>
+                    <td>A Kafka server that stores and serves messages</td>
+                </tr>
+            </table>
+
+            <h2>Why Event-Driven Architecture?</h2>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Loose Coupling</h3>
+                    <p>Services don't need to know about each other. They just publish and subscribe to events.</p>
+                </div>
+
+                <div class="card">
+                    <h3>Scalability</h3>
+                    <p>Add more consumers to handle increased load without changing producers.</p>
+                </div>
+
+                <div class="card">
+                    <h3>Reliability</h3>
+                    <p>Messages are persisted. If a service is down, it can catch up when it restarts.</p>
+                </div>
+
+                <div class="card">
+                    <h3>Async Processing</h3>
+                    <p>Long-running tasks don't block the request. Process events in the background.</p>
+                </div>
+            </div>
+
+            <h2>Event Flow in MicroMart</h2>
+
+            <div class="architecture-box">
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; align-items: center;">
+                    <div class="service-box user" style="padding: 20px;">
+                        <strong>User Service</strong><br>
+                        <small>Publishes</small><br>
+                        UserRegisteredEvent<br>
+                        UserUpdatedEvent
+                    </div>
+                    <span style="font-size: 2rem;">--></span>
+                    <div class="service-box" style="background: #1e1e1e; color: #fff; padding: 20px;">
+                        <strong>Kafka</strong><br>
+                        <small>Topics:</small><br>
+                        user-events<br>
+                        order-events<br>
+                        inventory-events
+                    </div>
+                    <span style="font-size: 2rem;">--></span>
+                    <div class="service-box order" style="padding: 20px;">
+                        <strong>Order Service</strong><br>
+                        <small>Consumes</small><br>
+                        user-events<br>
+                        inventory-events
+                    </div>
+                </div>
+            </div>
+
+            <h2>Events in MicroMart</h2>
+
+            <h3>User Events</h3>
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Topic</th>
+                    <th>Published When</th>
+                    <th>Data</th>
+                </tr>
+                <tr>
+                    <td>UserRegisteredEvent</td>
+                    <td>user-events</td>
+                    <td>User registers</td>
+                    <td>userId, username, email, timestamp</td>
+                </tr>
+                <tr>
+                    <td>UserUpdatedEvent</td>
+                    <td>user-events</td>
+                    <td>Profile updated</td>
+                    <td>userId, changedFields</td>
+                </tr>
+                <tr>
+                    <td>UserDeletedEvent</td>
+                    <td>user-events</td>
+                    <td>User deleted</td>
+                    <td>userId</td>
+                </tr>
+            </table>
+
+            <h3>Order Events</h3>
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Topic</th>
+                    <th>Published When</th>
+                </tr>
+                <tr>
+                    <td>OrderCreatedEvent</td>
+                    <td>order-events</td>
+                    <td>Order placed</td>
+                </tr>
+                <tr>
+                    <td>OrderConfirmedEvent</td>
+                    <td>order-events</td>
+                    <td>Order confirmed</td>
+                </tr>
+                <tr>
+                    <td>OrderShippedEvent</td>
+                    <td>order-events</td>
+                    <td>Order shipped</td>
+                </tr>
+                <tr>
+                    <td>OrderCancelledEvent</td>
+                    <td>order-events</td>
+                    <td>Order cancelled</td>
+                </tr>
+            </table>
+
+            <h3>Inventory Events</h3>
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Topic</th>
+                    <th>Published When</th>
+                </tr>
+                <tr>
+                    <td>StockReservedEvent</td>
+                    <td>inventory-events</td>
+                    <td>Stock reserved for order</td>
+                </tr>
+                <tr>
+                    <td>StockReleasedEvent</td>
+                    <td>inventory-events</td>
+                    <td>Stock released (order cancelled)</td>
+                </tr>
+                <tr>
+                    <td>LowStockAlertEvent</td>
+                    <td>inventory-events</td>
+                    <td>Stock below reorder level</td>
+                </tr>
+            </table>
+
+            <h2>Implementation</h2>
+
+            <h3>Event Class</h3>
+            <pre><code><span class="keyword">public record</span> <span class="class-name">UserRegisteredEvent</span>(
+    <span class="class-name">Long</span> userId,
+    <span class="class-name">String</span> username,
+    <span class="class-name">String</span> email,
+    <span class="class-name">LocalDateTime</span> timestamp
+) {}
+
+<span class="keyword">public record</span> <span class="class-name">OrderCreatedEvent</span>(
+    <span class="class-name">Long</span> orderId,
+    <span class="class-name">String</span> orderNumber,
+    <span class="class-name">Long</span> userId,
+    <span class="class-name">BigDecimal</span> totalAmount,
+    <span class="class-name">List</span>&lt;<span class="class-name">OrderItemDto</span>&gt; items,
+    <span class="class-name">LocalDateTime</span> timestamp
+) {}
+</code></pre>
+
+            <h3>Producer (Publishing Events)</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventPublisher</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafkaTemplate;
+
+    <span class="keyword">private static final</span> <span class="class-name">String</span> TOPIC = <span class="string">"user-events"</span>;
+
+    <span class="keyword">public void</span> publishUserRegistered(<span class="class-name">User</span> user) {
+        <span class="class-name">UserRegisteredEvent</span> event = <span class="keyword">new</span> <span class="class-name">UserRegisteredEvent</span>(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail().getValue(),
+            <span class="class-name">LocalDateTime</span>.now()
+        );
+
+        kafkaTemplate.send(TOPIC, user.getId().toString(), event)
+            .whenComplete((result, ex) -> {
+                <span class="keyword">if</span> (ex != <span class="keyword">null</span>) {
+                    log.error(<span class="string">"Failed to publish event"</span>, ex);
+                } <span class="keyword">else</span> {
+                    log.info(<span class="string">"Event published to partition {} offset {}"</span>,
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+                }
+            });
+    }
+}
+</code></pre>
+
+            <h3>Consumer (Listening to Events)</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventListener</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">NotificationService</span> notificationService;
+
+    <span class="annotation">@KafkaListener</span>(
+        topics = <span class="string">"user-events"</span>,
+        groupId = <span class="string">"notification-service"</span>
+    )
+    <span class="keyword">public void</span> handleUserEvent(<span class="class-name">UserRegisteredEvent</span> event) {
+        log.info(<span class="string">"Received user registered event: {}"</span>, event.username());
+
+        <span class="comment">// Send welcome email</span>
+        notificationService.sendWelcomeEmail(event.email(), event.username());
+    }
+
+    <span class="annotation">@KafkaListener</span>(
+        topics = <span class="string">"order-events"</span>,
+        groupId = <span class="string">"inventory-service"</span>
+    )
+    <span class="keyword">public void</span> handleOrderCreated(<span class="class-name">OrderCreatedEvent</span> event) {
+        log.info(<span class="string">"Order created: {}"</span>, event.orderNumber());
+
+        <span class="comment">// Process inventory updates</span>
+        <span class="keyword">for</span> (<span class="class-name">OrderItemDto</span> item : event.items()) {
+            inventoryService.confirmReservation(item.productId(), item.quantity());
+        }
+    }
+}
+</code></pre>
+
+            <h3>Configuration</h3>
+            <pre><code><span class="comment"># application.yml</span>
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all  <span class="comment"># Wait for all replicas</span>
+      retries: 3
+
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest  <span class="comment"># Start from beginning if no offset</span>
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.micromart.*
+
+    listener:
+      ack-mode: MANUAL_IMMEDIATE  <span class="comment"># Manual acknowledgment</span>
+      concurrency: 3              <span class="comment"># 3 consumer threads</span>
+</code></pre>
+
+            <h3>Kafka Configuration Class</h3>
+            <pre><code><span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="class-name">KafkaConfig</span> {
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">NewTopic</span> userEventsTopic() {
+        <span class="keyword">return</span> <span class="class-name">TopicBuilder</span>.name(<span class="string">"user-events"</span>)
+            .partitions(<span class="number">3</span>)
+            .replicas(<span class="number">1</span>)
+            .build();
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">NewTopic</span> orderEventsTopic() {
+        <span class="keyword">return</span> <span class="class-name">TopicBuilder</span>.name(<span class="string">"order-events"</span>)
+            .partitions(<span class="number">3</span>)
+            .replicas(<span class="number">1</span>)
+            .build();
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">ProducerFactory</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; producerFactory() {
+        <span class="class-name">Map</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; config = <span class="keyword">new</span> <span class="class-name">HashMap</span>&lt;&gt;();
+        config.put(<span class="class-name">ProducerConfig</span>.BOOTSTRAP_SERVERS_CONFIG, <span class="string">"localhost:9092"</span>);
+        config.put(<span class="class-name">ProducerConfig</span>.KEY_SERIALIZER_CLASS_CONFIG, <span class="class-name">StringSerializer</span>.<span class="keyword">class</span>);
+        config.put(<span class="class-name">ProducerConfig</span>.VALUE_SERIALIZER_CLASS_CONFIG, <span class="class-name">JsonSerializer</span>.<span class="keyword">class</span>);
+        <span class="keyword">return new</span> <span class="class-name">DefaultKafkaProducerFactory</span>&lt;&gt;(config);
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafkaTemplate() {
+        <span class="keyword">return new</span> <span class="class-name">KafkaTemplate</span>&lt;&gt;(producerFactory());
+    }
+}
+</code></pre>
+
+            <h2>Error Handling</h2>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">KafkaErrorHandler</span> <span class="keyword">implements</span> <span class="class-name">ConsumerRecordRecoverer</span> {
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public void</span> accept(<span class="class-name">ConsumerRecord</span>&lt;?, ?&gt; record, <span class="class-name">Exception</span> ex) {
+        log.error(<span class="string">"Error processing message from topic {} partition {} offset {}"</span>,
+            record.topic(), record.partition(), record.offset(), ex);
+
+        <span class="comment">// Send to dead letter topic</span>
+        kafkaTemplate.send(<span class="string">"dead-letter-topic"</span>, record.key(), record.value());
+    }
+}
+
+<span class="comment">// Configure retry and error handling</span>
+<span class="annotation">@Bean</span>
+<span class="keyword">public</span> <span class="class-name">DefaultErrorHandler</span> errorHandler(<span class="class-name">KafkaErrorHandler</span> recoverer) {
+    <span class="class-name">BackOff</span> backOff = <span class="keyword">new</span> <span class="class-name">ExponentialBackOff</span>(<span class="number">1000</span>, <span class="number">2.0</span>);  <span class="comment">// 1s, 2s, 4s...</span>
+    backOff.setMaxElapsedTime(<span class="number">30000</span>);  <span class="comment">// Max 30 seconds</span>
+
+    <span class="keyword">return new</span> <span class="class-name">DefaultErrorHandler</span>(recoverer, backOff);
+}
+</code></pre>
+
+            <h2>Synchronous vs Asynchronous</h2>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Use REST (Synchronous)</h3>
+                    <p>When you need immediate response:</p>
+                    <ul>
+                        <li>Getting product details</li>
+                        <li>Checking stock availability</li>
+                        <li>User authentication</li>
+                    </ul>
+                    <span class="badge primary">Request-Response</span>
+                </div>
+
+                <div class="card">
+                    <h3>Use Kafka (Asynchronous)</h3>
+                    <p>When you don't need immediate response:</p>
+                    <ul>
+                        <li>Sending notifications</li>
+                        <li>Updating analytics</li>
+                        <li>Audit logging</li>
+                        <li>Multiple services need same data</li>
+                    </ul>
+                    <span class="badge success">Fire-and-Forget</span>
+                </div>
+            </div>
+
+            <h2>Running Kafka Locally</h2>
+            <pre><code><span class="comment"># docker-compose.yml</span>
+version: '3.8'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+</code></pre>
+
+            <pre><code><span class="comment"># Start Kafka</span>
+docker-compose up -d
+
+<span class="comment"># Create topic</span>
+docker exec kafka kafka-topics --create --topic user-events --bootstrap-server localhost:9092
+
+<span class="comment"># List topics</span>
+docker exec kafka kafka-topics --list --bootstrap-server localhost:9092
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

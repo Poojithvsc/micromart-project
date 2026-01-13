@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart Documentation - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link active">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <h1>Welcome to MicroMart</h1>
+            <p class="lead">
+                A comprehensive e-commerce platform built with microservices architecture,
+                demonstrating enterprise Java patterns with Spring Boot.
+            </p>
+
+            <h2>What is MicroMart?</h2>
+            <p>
+                MicroMart is a fully-functional online shopping platform similar to Amazon or Flipkart.
+                It allows users to register, browse products, place orders, and track deliveries.
+                What makes it special is how it's built - using <strong>microservices architecture</strong>,
+                where the application is split into small, independent services.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Why Microservices?</div>
+                <p>
+                    Instead of one large application (monolith), MicroMart is composed of 6 independent services.
+                    This allows each service to be developed, deployed, and scaled independently.
+                    If one service has a bug, the others continue working!
+                </p>
+            </div>
+
+            <h2>Quick Overview</h2>
+            <div class="card-grid">
+                <div class="card service-card gateway">
+                    <div class="card-icon">🚪</div>
+                    <h3>API Gateway</h3>
+                    <p>Single entry point for all requests. Handles routing, authentication, and rate limiting.</p>
+                    <span class="badge warning">Port 8080</span>
+                </div>
+
+                <div class="card service-card eureka">
+                    <div class="card-icon">🔍</div>
+                    <h3>Eureka Server</h3>
+                    <p>Service discovery - allows services to find and communicate with each other.</p>
+                    <span class="badge warning">Port 8761</span>
+                </div>
+
+                <div class="card service-card user-service">
+                    <div class="card-icon">👤</div>
+                    <h3>User Service</h3>
+                    <p>Handles user registration, login, authentication, and profile management.</p>
+                    <span class="badge purple">Port 8081</span>
+                </div>
+
+                <div class="card service-card product-service">
+                    <div class="card-icon">📦</div>
+                    <h3>Product Service</h3>
+                    <p>Manages product catalog, categories, inventory, and stock control.</p>
+                    <span class="badge primary">Port 8082</span>
+                </div>
+
+                <div class="card service-card order-service">
+                    <div class="card-icon">📋</div>
+                    <h3>Order Service</h3>
+                    <p>Processes orders, manages order lifecycle, and coordinates with inventory.</p>
+                    <span class="badge success">Port 8083</span>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📚</div>
+                    <h3>Common Module</h3>
+                    <p>Shared code including DTOs, exceptions, and utilities used by all services.</p>
+                    <span class="badge">Library</span>
+                </div>
+            </div>
+
+            <h2>Technology Stack</h2>
+            <div class="tech-stack">
+                <span class="tech-item">Java 24</span>
+                <span class="tech-item">Spring Boot 3.4.4</span>
+                <span class="tech-item">Spring Cloud 2024.0.0</span>
+                <span class="tech-item">Spring Security</span>
+                <span class="tech-item">Spring Data JPA</span>
+                <span class="tech-item">PostgreSQL</span>
+                <span class="tech-item">Apache Kafka</span>
+                <span class="tech-item">AWS S3</span>
+                <span class="tech-item">Redis</span>
+                <span class="tech-item">JWT</span>
+                <span class="tech-item">MapStruct</span>
+                <span class="tech-item">Lombok</span>
+                <span class="tech-item">Docker</span>
+            </div>
+
+            <h2>Key Features</h2>
+            <ul class="feature-list">
+                <li><strong>User Authentication</strong> - Secure JWT-based login with role-based access control</li>
+                <li><strong>Product Catalog</strong> - Full CRUD with search, filtering, and categorization</li>
+                <li><strong>Inventory Management</strong> - Real-time stock tracking with optimistic locking</li>
+                <li><strong>Order Processing</strong> - Complete order lifecycle from creation to delivery</li>
+                <li><strong>Event-Driven</strong> - Asynchronous communication via Kafka</li>
+                <li><strong>Service Discovery</strong> - Dynamic service registration with Eureka</li>
+                <li><strong>API Gateway</strong> - Centralized routing, authentication, and rate limiting</li>
+                <li><strong>Image Storage</strong> - Product images stored in AWS S3</li>
+            </ul>
+
+            <h2>Architecture at a Glance</h2>
+            <div class="architecture-box">
+                <div class="layer client">
+                    <div class="layer-title">Clients</div>
+                    <p>Web Browser | Mobile App | Third-Party APIs</p>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="layer gateway">
+                    <div class="layer-title">API Gateway (Port 8080)</div>
+                    <p>Routing | JWT Validation | Rate Limiting | Circuit Breaker</p>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="layer services">
+                    <div class="layer-title">Microservices</div>
+                    <div class="service-boxes">
+                        <div class="service-box user">User Service (8081)</div>
+                        <div class="service-box product">Product Service (8082)</div>
+                        <div class="service-box order">Order Service (8083)</div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">↓</div>
+
+                <div class="layer data">
+                    <div class="layer-title">Data Layer</div>
+                    <p>PostgreSQL (user_db, product_db, order_db) | Redis Cache | AWS S3 | Kafka</p>
+                </div>
+            </div>
+
+            <h2>Getting Started</h2>
+            <p>Ready to dive deeper? Here's the recommended reading order:</p>
+            <ol>
+                <li><a href="architecture.html">Architecture Overview</a> - Understand the big picture</li>
+                <li><a href="spring-boot.html">Spring Boot Basics</a> - Learn the core framework</li>
+                <li><a href="user-service.html">User Service</a> - Start with authentication</li>
+                <li><a href="design-patterns.html">Design Patterns</a> - Understand the patterns used</li>
+                <li><a href="api-reference.html">API Reference</a> - Explore all endpoints</li>
+            </ol>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

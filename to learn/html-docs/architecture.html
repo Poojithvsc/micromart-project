@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - System Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link active">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Architecture</span>
+            </div>
+
+            <h1>System Architecture</h1>
+            <p class="lead">
+                Understanding how MicroMart's components work together to create a scalable,
+                maintainable e-commerce platform.
+            </p>
+
+            <h2>Microservices vs Monolith</h2>
+            <p>
+                Before diving into the architecture, let's understand why we chose microservices.
+            </p>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Monolith Architecture</h3>
+                    <p>Traditional approach where everything is in one application.</p>
+                    <ul>
+                        <li>Single codebase</li>
+                        <li>Single database</li>
+                        <li>Deploy everything together</li>
+                        <li>Simpler initially</li>
+                    </ul>
+                    <div class="info-box warning" style="margin-top: 15px;">
+                        <strong>Drawback:</strong> A bug in one part can crash everything. Hard to scale specific features.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Microservices Architecture</h3>
+                    <p>Modern approach with independent services.</p>
+                    <ul>
+                        <li>Separate codebases per service</li>
+                        <li>Each service has its own database</li>
+                        <li>Deploy services independently</li>
+                        <li>Scale what you need</li>
+                    </ul>
+                    <div class="info-box success" style="margin-top: 15px;">
+                        <strong>Benefit:</strong> If Product Service crashes, User Service still works!
+                    </div>
+                </div>
+            </div>
+
+            <h2>High-Level Architecture</h2>
+            <p>
+                Here's how requests flow through the system:
+            </p>
+
+            <div class="architecture-box">
+                <div class="layer client">
+                    <div class="layer-title">1. Clients (Frontend)</div>
+                    <p>Web Browser | Mobile App | Third-Party APIs</p>
+                    <small>Clients make HTTP requests to our system</small>
+                </div>
+
+                <div class="flow-arrow">v</div>
+
+                <div class="layer gateway">
+                    <div class="layer-title">2. API Gateway (Port 8080)</div>
+                    <p>Spring Cloud Gateway</p>
+                    <small>
+                        <strong>Responsibilities:</strong> Route requests | Validate JWT tokens | Rate limiting | CORS
+                    </small>
+                </div>
+
+                <div class="flow-arrow">v</div>
+
+                <div class="layer" style="border-color: #e03131; background: #fff5f5;">
+                    <div class="layer-title">3. Service Discovery (Port 8761)</div>
+                    <p>Netflix Eureka Server</p>
+                    <small>
+                        Registry where all services register themselves. Gateway asks Eureka: "Where is User Service?"
+                    </small>
+                </div>
+
+                <div class="flow-arrow">v</div>
+
+                <div class="layer services">
+                    <div class="layer-title">4. Microservices Layer</div>
+                    <div class="service-boxes">
+                        <div class="service-box user">
+                            User Service<br>
+                            <small>Port 8081</small>
+                        </div>
+                        <div class="service-box product">
+                            Product Service<br>
+                            <small>Port 8082</small>
+                        </div>
+                        <div class="service-box order">
+                            Order Service<br>
+                            <small>Port 8083</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">v</div>
+
+                <div class="layer data">
+                    <div class="layer-title">5. Data Layer</div>
+                    <div class="service-boxes">
+                        <div class="service-box" style="background: #e9ecef;">user_db</div>
+                        <div class="service-box" style="background: #e9ecef;">product_db</div>
+                        <div class="service-box" style="background: #e9ecef;">order_db</div>
+                    </div>
+                    <p style="margin-top: 15px;">PostgreSQL | Redis Cache | AWS S3 | Apache Kafka</p>
+                </div>
+            </div>
+
+            <h2>Component Details</h2>
+
+            <h3>1. API Gateway</h3>
+            <div class="info-box info">
+                <div class="info-box-title">What is an API Gateway?</div>
+                <p>
+                    Think of it as the "front door" to your application. Instead of clients knowing about
+                    multiple service URLs, they only need to know one: the Gateway.
+                </p>
+            </div>
+
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><strong>Routing</strong></td>
+                    <td>Forwards <code>/api/users/**</code> to User Service, <code>/api/products/**</code> to Product Service</td>
+                </tr>
+                <tr>
+                    <td><strong>Authentication</strong></td>
+                    <td>Validates JWT tokens before forwarding requests</td>
+                </tr>
+                <tr>
+                    <td><strong>Rate Limiting</strong></td>
+                    <td>Prevents abuse by limiting requests (100/minute for auth, 500/minute for products)</td>
+                </tr>
+                <tr>
+                    <td><strong>Load Balancing</strong></td>
+                    <td>Distributes requests across multiple instances of a service</td>
+                </tr>
+                <tr>
+                    <td><strong>Circuit Breaker</strong></td>
+                    <td>Fails fast if a downstream service is down</td>
+                </tr>
+            </table>
+
+            <h3>2. Service Discovery (Eureka)</h3>
+            <div class="info-box info">
+                <div class="info-box-title">Why Service Discovery?</div>
+                <p>
+                    In cloud environments, services can start, stop, and move to different servers dynamically.
+                    Eureka keeps track of where each service is running.
+                </p>
+            </div>
+
+            <p><strong>How it works:</strong></p>
+            <ol>
+                <li><strong>Registration:</strong> When User Service starts, it registers with Eureka: "I'm User Service, running at 192.168.1.10:8081"</li>
+                <li><strong>Heartbeat:</strong> Every 30 seconds, services send a heartbeat to Eureka: "I'm still alive!"</li>
+                <li><strong>Discovery:</strong> When API Gateway needs User Service, it asks Eureka for the current address</li>
+                <li><strong>Eviction:</strong> If a service stops sending heartbeats, Eureka removes it after 90 seconds</li>
+            </ol>
+
+            <h3>3. Microservices</h3>
+            <p>Each service is a complete, independent application:</p>
+
+            <div class="card-grid">
+                <div class="card service-card user-service">
+                    <h3>User Service (8081)</h3>
+                    <p><strong>Domain:</strong> Authentication & Users</p>
+                    <ul>
+                        <li>User registration & login</li>
+                        <li>JWT token generation</li>
+                        <li>Role management</li>
+                        <li>Profile updates</li>
+                    </ul>
+                    <p><strong>Database:</strong> user_db</p>
+                </div>
+
+                <div class="card service-card product-service">
+                    <h3>Product Service (8082)</h3>
+                    <p><strong>Domain:</strong> Catalog & Inventory</p>
+                    <ul>
+                        <li>Product CRUD operations</li>
+                        <li>Category management</li>
+                        <li>Inventory tracking</li>
+                        <li>Image upload (S3)</li>
+                    </ul>
+                    <p><strong>Database:</strong> product_db</p>
+                </div>
+
+                <div class="card service-card order-service">
+                    <h3>Order Service (8083)</h3>
+                    <p><strong>Domain:</strong> Orders & Checkout</p>
+                    <ul>
+                        <li>Order creation & management</li>
+                        <li>Order status tracking</li>
+                        <li>Inventory reservation</li>
+                        <li>Order history</li>
+                    </ul>
+                    <p><strong>Database:</strong> order_db</p>
+                </div>
+            </div>
+
+            <h2>Communication Patterns</h2>
+
+            <h3>Synchronous Communication (REST)</h3>
+            <p>
+                Direct HTTP calls between services when an immediate response is needed.
+            </p>
+
+            <pre><code><span class="comment">// Order Service needs product details</span>
+<span class="annotation">@FeignClient</span>(name = <span class="string">"product-service"</span>)
+<span class="keyword">public interface</span> <span class="class-name">ProductClient</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products/{id}"</span>)
+    <span class="class-name">ProductDto</span> getProduct(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id);
+}
+
+<span class="comment">// Usage: Order Service calls Product Service via HTTP</span>
+<span class="class-name">ProductDto</span> product = productClient.getProduct(<span class="number">123</span>);
+</code></pre>
+
+            <div class="info-box warning">
+                <div class="info-box-title">When to use REST?</div>
+                <ul>
+                    <li>When you need an immediate response</li>
+                    <li>For queries and reads</li>
+                    <li>When the caller can't proceed without the response</li>
+                </ul>
+            </div>
+
+            <h3>Asynchronous Communication (Kafka Events)</h3>
+            <p>
+                Message-based communication for operations that don't need immediate response.
+            </p>
+
+            <pre><code><span class="comment">// Publishing an event (User Service)</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventPublisher</span> {
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafkaTemplate;
+
+    <span class="keyword">public void</span> publishUserRegistered(<span class="class-name">User</span> user) {
+        kafkaTemplate.send(<span class="string">"user-events"</span>, <span class="keyword">new</span> <span class="class-name">UserRegisteredEvent</span>(user));
+    }
+}
+
+<span class="comment">// Consuming an event (Order Service)</span>
+<span class="annotation">@KafkaListener</span>(topics = <span class="string">"user-events"</span>)
+<span class="keyword">public void</span> handleUserEvent(<span class="class-name">UserRegisteredEvent</span> event) {
+    log.info(<span class="string">"New user registered: {}"</span>, event.getUsername());
+}
+</code></pre>
+
+            <div class="info-box success">
+                <div class="info-box-title">When to use Events?</div>
+                <ul>
+                    <li>For notifications that don't need immediate processing</li>
+                    <li>When multiple services need to react to the same event</li>
+                    <li>For audit logging and event sourcing</li>
+                    <li>To decouple services</li>
+                </ul>
+            </div>
+
+            <h2>Data Architecture</h2>
+
+            <h3>Database per Service Pattern</h3>
+            <p>
+                Each microservice has its own database. This ensures:
+            </p>
+            <ul>
+                <li><strong>Independence:</strong> Services can use different database technologies</li>
+                <li><strong>Isolation:</strong> One service's schema changes don't affect others</li>
+                <li><strong>Scalability:</strong> Databases can be scaled independently</li>
+            </ul>
+
+            <table>
+                <tr>
+                    <th>Service</th>
+                    <th>Database</th>
+                    <th>Key Tables</th>
+                </tr>
+                <tr>
+                    <td>User Service</td>
+                    <td>user_db (PostgreSQL)</td>
+                    <td>users, roles, user_roles</td>
+                </tr>
+                <tr>
+                    <td>Product Service</td>
+                    <td>product_db (PostgreSQL)</td>
+                    <td>products, categories, inventory</td>
+                </tr>
+                <tr>
+                    <td>Order Service</td>
+                    <td>order_db (PostgreSQL)</td>
+                    <td>orders, order_items</td>
+                </tr>
+            </table>
+
+            <h3>Caching Strategy (Redis)</h3>
+            <p>
+                Frequently accessed data is cached to reduce database load:
+            </p>
+            <ul>
+                <li>Product details (TTL: 15 minutes)</li>
+                <li>Category lists (TTL: 30 minutes)</li>
+                <li>User sessions</li>
+            </ul>
+
+            <h2>Request Flow Example</h2>
+            <p>
+                Let's trace a complete request: <strong>User places an order</strong>
+            </p>
+
+            <div class="architecture-box">
+                <ol style="text-align: left; max-width: 600px; margin: 0 auto;">
+                    <li style="margin: 15px 0;">
+                        <strong>Client</strong> sends POST /api/orders with JWT token
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>API Gateway</strong> validates JWT, extracts user ID, forwards to Order Service
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>Order Service</strong> calls Product Service via Feign to verify products exist
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>Order Service</strong> calls Product Service to reserve inventory
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>Order Service</strong> creates order in order_db
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>Order Service</strong> publishes OrderCreatedEvent to Kafka
+                    </li>
+                    <li style="margin: 15px 0;">
+                        <strong>Response</strong> flows back through Gateway to Client
+                    </li>
+                </ol>
+            </div>
+
+            <h2>Fault Tolerance</h2>
+            <p>
+                The system is designed to handle failures gracefully:
+            </p>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Circuit Breaker</h3>
+                    <p>
+                        If Product Service fails 5 times in a row, the circuit "opens" and calls fail immediately
+                        for 30 seconds before trying again.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Fallbacks</h3>
+                    <p>
+                        When a service is unavailable, fallback methods return cached data or friendly error messages
+                        instead of crashing.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Retry Logic</h3>
+                    <p>
+                        Transient failures (network hiccups) are retried automatically up to 3 times with
+                        exponential backoff.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>Health Checks</h3>
+                    <p>
+                        Each service exposes /actuator/health endpoint. Unhealthy services are removed from
+                        Eureka registry.
+                    </p>
+                </div>
+            </div>
+
+            <h2>Security Architecture</h2>
+            <p>
+                Security is implemented at multiple layers:
+            </p>
+
+            <table>
+                <tr>
+                    <th>Layer</th>
+                    <th>Security Measure</th>
+                </tr>
+                <tr>
+                    <td><strong>API Gateway</strong></td>
+                    <td>JWT validation, Rate limiting, CORS configuration</td>
+                </tr>
+                <tr>
+                    <td><strong>Service Level</strong></td>
+                    <td>Role-based access control (RBAC), Method security</td>
+                </tr>
+                <tr>
+                    <td><strong>Data Level</strong></td>
+                    <td>Password hashing (BCrypt), Sensitive data encryption</td>
+                </tr>
+                <tr>
+                    <td><strong>Communication</strong></td>
+                    <td>HTTPS in production, Internal service authentication</td>
+                </tr>
+            </table>
+
+            <h2>Deployment Architecture</h2>
+            <p>
+                The system can be deployed in multiple ways:
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Development</div>
+                <p>Run each service locally with <code>mvn spring-boot:run</code>. Use docker-compose for databases and Kafka.</p>
+            </div>
+
+            <div class="info-box success">
+                <div class="info-box-title">Production (AWS)</div>
+                <p>
+                    Deploy using Docker containers on AWS ECS with:<br>
+                    - RDS for PostgreSQL databases<br>
+                    - ElastiCache for Redis<br>
+                    - MSK for Kafka<br>
+                    - S3 for image storage<br>
+                    - ALB for load balancing
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

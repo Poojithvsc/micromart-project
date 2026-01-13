@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Integration Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link active">Integration Guide</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <h1>Integration Guide</h1>
+            <p class="lead">
+                How Spring Boot, Spring Cloud, JPA, Kafka, and PEAA patterns all connect and work together
+                as a unified system.
+            </p>
+
+            <h2>The Big Picture</h2>
+            <p>
+                Each technology has a specific role. Understanding how they integrate is key to mastering
+                the architecture.
+            </p>
+
+            <div class="architecture-box">
+                <pre style="text-align: left; font-size: 0.8rem; max-width: 800px; margin: 0 auto;">
++------------------------------------------------------------------+
+|                        SPRING BOOT                                |
+|  (Foundation - Auto-configuration, Embedded Server, DI)          |
++------------------------------------------------------------------+
+        |              |              |              |
+        v              v              v              v
++-------------+ +-------------+ +-------------+ +-------------+
+|   SPRING    | |   SPRING    | |   SPRING    | |   SPRING    |
+|   CLOUD     | |  SECURITY   | |  DATA JPA   | |   KAFKA     |
+| (Gateway,   | | (JWT, RBAC) | | (Repository,| | (Events,    |
+|  Eureka,    | |             | |  Entities)  | |  Pub/Sub)   |
+|  Feign)     | |             | |             | |             |
++-------------+ +-------------+ +-------------+ +-------------+
+        |              |              |              |
+        +-------+------+------+------+------+-------+
+                |             |             |
+                v             v             v
+        +-------------+ +-------------+ +-------------+
+        |    PEAA     | |     DDD     | |     GoF     |
+        |  Patterns   | |  Patterns   | |  Patterns   |
+        | (Service,   | | (Entity,    | | (Factory,   |
+        | Repository, | | Value Obj,  | | Observer,   |
+        |    DTO)     | | Aggregate)  | | Strategy)   |
+        +-------------+ +-------------+ +-------------+
+                              |
+                              v
+                    +------------------+
+                    |    PostgreSQL    |
+                    |    + Redis       |
+                    |    + AWS S3      |
+                    +------------------+
+                </pre>
+            </div>
+
+            <h2>Integration Point 1: Spring Boot + Spring Cloud</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">How They Connect</div>
+                <p>
+                    Spring Boot provides the foundation (auto-configuration, embedded server).
+                    Spring Cloud adds distributed system capabilities on top.
+                </p>
+            </div>
+
+            <h3>Dependencies That Wire Them Together</h3>
+            <pre><code><span class="comment">&lt;!-- pom.xml --&gt;</span>
+<span class="comment">&lt;!-- Spring Boot Parent --&gt;</span>
+&lt;parent&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+    &lt;version&gt;3.4.4&lt;/version&gt;
+&lt;/parent&gt;
+
+<span class="comment">&lt;!-- Spring Cloud BOM (Bill of Materials) --&gt;</span>
+&lt;dependencyManagement&gt;
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-cloud-dependencies&lt;/artifactId&gt;
+            &lt;version&gt;2024.0.0&lt;/version&gt;
+            &lt;type&gt;pom&lt;/type&gt;
+            &lt;scope&gt;import&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/dependencyManagement&gt;
+
+<span class="comment">&lt;!-- Spring Cloud Components --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-netflix-eureka-client&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-openfeign&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+            <h3>Configuration Integration</h3>
+            <pre><code><span class="comment"># application.yml - Both Spring Boot and Spring Cloud config together</span>
+<span class="comment"># Spring Boot Config</span>
+server:
+  port: 8083
+
+spring:
+  application:
+    name: order-service  <span class="comment"># Used by Eureka for registration</span>
+
+<span class="comment"># Spring Cloud Config</span>
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+<span class="comment"># How they integrate:</span>
+<span class="comment"># 1. Spring Boot starts the application</span>
+<span class="comment"># 2. spring.application.name is used by Eureka client</span>
+<span class="comment"># 3. Eureka client registers with server automatically</span>
+<span class="comment"># 4. Feign clients use Eureka to discover services</span>
+</code></pre>
+
+            <h3>Code Integration</h3>
+            <pre><code><span class="comment">// Main application - Enables all integrations</span>
+<span class="annotation">@SpringBootApplication</span>       <span class="comment">// Spring Boot</span>
+<span class="annotation">@EnableDiscoveryClient</span>       <span class="comment">// Spring Cloud Eureka</span>
+<span class="annotation">@EnableFeignClients</span>          <span class="comment">// Spring Cloud Feign</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceApplication</span> {
+    <span class="keyword">public static void</span> main(<span class="class-name">String</span>[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">OrderServiceApplication</span>.<span class="keyword">class</span>, args);
+    }
+}
+</code></pre>
+
+            <h2>Integration Point 2: Spring Data JPA + PEAA Patterns</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">How They Connect</div>
+                <p>
+                    Spring Data JPA provides the infrastructure (Hibernate, transaction management).
+                    PEAA patterns (Repository, Domain Model) define how we organize the code.
+                </p>
+            </div>
+
+            <h3>Repository Pattern Implementation</h3>
+            <pre><code><span class="comment">// PEAA Repository Pattern implemented with Spring Data JPA</span>
+
+<span class="comment">// The interface (PEAA Repository concept)</span>
+<span class="keyword">public interface</span> <span class="class-name">OrderRepository</span> <span class="keyword">extends</span> <span class="class-name">JpaRepository</span>&lt;<span class="class-name">Order</span>, <span class="class-name">Long</span>&gt; {
+    <span class="comment">// Spring Data JPA generates implementation!</span>
+    <span class="class-name">List</span>&lt;<span class="class-name">Order</span>&gt; findByUserId(<span class="class-name">Long</span> userId);
+    <span class="class-name">Optional</span>&lt;<span class="class-name">Order</span>&gt; findByOrderNumber(<span class="class-name">String</span> orderNumber);
+}
+
+<span class="comment">// The integration magic:</span>
+<span class="comment">// 1. You define interface methods</span>
+<span class="comment">// 2. Spring Data JPA creates implementation at startup</span>
+<span class="comment">// 3. @Repository annotation enables exception translation</span>
+<span class="comment">// 4. Hibernate handles SQL generation</span>
+<span class="comment">// 5. Connection pooling via HikariCP</span>
+</code></pre>
+
+            <h3>Domain Model + JPA Entities</h3>
+            <pre><code><span class="comment">// PEAA Domain Model pattern + JPA annotations</span>
+
+<span class="annotation">@Entity</span>  <span class="comment">// JPA: Maps to database table</span>
+<span class="keyword">public class</span> <span class="class-name">Order</span> {
+
+    <span class="annotation">@Id</span> <span class="annotation">@GeneratedValue</span>  <span class="comment">// JPA: Primary key</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Embedded</span>  <span class="comment">// JPA: Value Object stored in same table</span>
+    <span class="keyword">private</span> <span class="class-name">Money</span> totalAmount;
+
+    <span class="annotation">@OneToMany</span>(cascade = CascadeType.ALL)  <span class="comment">// JPA: Relationship</span>
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">OrderItem</span>&gt; items;
+
+    <span class="comment">// DOMAIN MODEL: Business logic in entity</span>
+    <span class="keyword">public void</span> addItem(<span class="class-name">OrderItem</span> item) {
+        items.add(item);
+        recalculateTotal();  <span class="comment">// Entity has behavior, not just data!</span>
+    }
+
+    <span class="keyword">public void</span> cancel() {
+        <span class="keyword">if</span> (!canBeCancelled()) {
+            <span class="keyword">throw new</span> <span class="class-name">IllegalStateException</span>(<span class="string">"Cannot cancel"</span>);
+        }
+        <span class="keyword">this</span>.status = <span class="class-name">OrderStatus</span>.CANCELLED;
+    }
+
+    <span class="keyword">public boolean</span> canBeCancelled() {
+        <span class="keyword">return</span> status == PENDING || status == CONFIRMED;
+    }
+}
+</code></pre>
+
+            <h3>Transaction Integration</h3>
+            <pre><code><span class="comment">// Spring's @Transactional integrates with JPA</span>
+
+<span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>  <span class="comment">// Spring manages transaction boundaries</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> {
+
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(<span class="class-name">CreateOrderRequest</span> request) {
+        <span class="comment">// Everything in this method runs in ONE transaction</span>
+
+        <span class="class-name">Order</span> order = <span class="keyword">new</span> <span class="class-name">Order</span>();
+        <span class="comment">// ... build order ...</span>
+
+        orderRepository.save(order);     <span class="comment">// INSERT</span>
+        <span class="comment">// If this fails, everything rolls back</span>
+
+        inventoryService.reserve(...);   <span class="comment">// UPDATE inventory</span>
+        <span class="comment">// If this fails, order INSERT rolls back too!</span>
+
+        <span class="keyword">return</span> mapper.toResponse(order);
+    }
+    <span class="comment">// Transaction commits here if no exception</span>
+}
+
+<span class="comment">// How the integration works:</span>
+<span class="comment">// 1. @Transactional creates a proxy around the service</span>
+<span class="comment">// 2. Proxy starts transaction before method</span>
+<span class="comment">// 3. JPA operations use this transaction</span>
+<span class="comment">// 4. Proxy commits on success, rollback on exception</span>
+</code></pre>
+
+            <h2>Integration Point 3: Service Layer + All Components</h2>
+
+            <div class="info-box success">
+                <div class="info-box-title">The Service Layer is the Integration Hub</div>
+                <p>
+                    The Service Layer (PEAA pattern) is where everything comes together.
+                    It coordinates repositories, external services, events, and business logic.
+                </p>
+            </div>
+
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="annotation">@RequiredArgsConstructor</span>  <span class="comment">// Lombok generates constructor</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">OrderService</span> {
+
+    <span class="comment">// SPRING DATA JPA - Repository Pattern</span>
+    <span class="keyword">private final</span> <span class="class-name">OrderRepository</span> orderRepository;
+
+    <span class="comment">// SPRING CLOUD - Feign Clients</span>
+    <span class="keyword">private final</span> <span class="class-name">ProductClient</span> productClient;
+    <span class="keyword">private final</span> <span class="class-name">InventoryClient</span> inventoryClient;
+
+    <span class="comment">// MAPSTRUCT - DTO Mapping</span>
+    <span class="keyword">private final</span> <span class="class-name">OrderMapper</span> orderMapper;
+
+    <span class="comment">// SPRING KAFKA - Event Publishing</span>
+    <span class="keyword">private final</span> <span class="class-name">OrderEventPublisher</span> eventPublisher;
+
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(<span class="class-name">CreateOrderRequest</span> request, <span class="class-name">Long</span> userId) {
+
+        <span class="comment">// 1. FEIGN + EUREKA: Call Product Service</span>
+        <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; products = productClient.getProducts(productIds);
+
+        <span class="comment">// 2. FEIGN + CIRCUIT BREAKER: Reserve inventory</span>
+        inventoryClient.reserveStock(productId, quantity);
+
+        <span class="comment">// 3. DOMAIN MODEL: Create entities with business logic</span>
+        <span class="class-name">Order</span> order = <span class="keyword">new</span> <span class="class-name">Order</span>();
+        order.setShippingAddress(<span class="class-name">Address</span>.of(...));  <span class="comment">// Value Object</span>
+        order.addItem(item);  <span class="comment">// Aggregate behavior</span>
+
+        <span class="comment">// 4. SPRING DATA JPA: Persist to database</span>
+        order = orderRepository.save(order);
+
+        <span class="comment">// 5. SPRING KAFKA: Publish event</span>
+        eventPublisher.publishOrderCreated(order);
+
+        <span class="comment">// 6. MAPSTRUCT: Convert to DTO</span>
+        <span class="keyword">return</span> orderMapper.toResponse(order);
+    }
+}
+</code></pre>
+
+            <h2>Integration Point 4: Spring Security + Gateway</h2>
+
+            <pre><code><span class="comment">// Gateway validates JWT and forwards user info</span>
+
+<span class="comment">// 1. JwtAuthFilter at Gateway</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtAuthFilter</span> <span class="keyword">implements</span> <span class="class-name">GatewayFilter</span> {
+    <span class="keyword">public</span> <span class="class-name">Mono</span>&lt;<span class="class-name">Void</span>&gt; filter(<span class="class-name">ServerWebExchange</span> exchange, <span class="class-name">GatewayFilterChain</span> chain) {
+        <span class="class-name">String</span> token = extractToken(exchange);
+        <span class="keyword">if</span> (jwtProvider.validateToken(token)) {
+            <span class="comment">// Add user info to headers</span>
+            exchange.getRequest().mutate()
+                .header(<span class="string">"X-User-Id"</span>, jwtProvider.getUserId(token))
+                .header(<span class="string">"X-User-Roles"</span>, jwtProvider.getRoles(token));
+        }
+        <span class="keyword">return</span> chain.filter(exchange);
+    }
+}
+
+<span class="comment">// 2. Services receive user info via headers</span>
+<span class="annotation">@PostMapping</span>
+<span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(
+    <span class="annotation">@RequestBody</span> <span class="class-name">CreateOrderRequest</span> request,
+    <span class="annotation">@RequestHeader</span>(<span class="string">"X-User-Id"</span>) <span class="class-name">Long</span> userId,
+    <span class="annotation">@RequestHeader</span>(<span class="string">"X-User-Roles"</span>) <span class="class-name">String</span> roles) {
+    <span class="comment">// User already authenticated by Gateway</span>
+}
+
+<span class="comment">// 3. Method security for authorization</span>
+<span class="annotation">@PreAuthorize</span>(<span class="string">"hasRole('ADMIN')"</span>)
+<span class="keyword">public void</span> deleteOrder(<span class="class-name">Long</span> orderId) { }
+</code></pre>
+
+            <h2>Integration Point 5: Kafka + Services</h2>
+
+            <pre><code><span class="comment">// How Kafka integrates with Spring services</span>
+
+<span class="comment">// PRODUCER SIDE (Order Service)</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">OrderEventPublisher</span> {
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafkaTemplate;
+
+    <span class="keyword">public void</span> publishOrderCreated(<span class="class-name">Order</span> order) {
+        <span class="comment">// Spring Kafka serializes to JSON and sends</span>
+        kafkaTemplate.send(<span class="string">"order-events"</span>, order.getId().toString(), event);
+    }
+}
+
+<span class="comment">// CONSUMER SIDE (Notification Service)</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">OrderEventConsumer</span> {
+
+    <span class="annotation">@KafkaListener</span>(topics = <span class="string">"order-events"</span>, groupId = <span class="string">"notification-svc"</span>)
+    <span class="keyword">public void</span> handle(<span class="class-name">OrderCreatedEvent</span> event) {
+        <span class="comment">// Spring Kafka deserializes JSON to object</span>
+        emailService.sendConfirmation(event.userId());
+    }
+}
+
+<span class="comment">// The integration magic:</span>
+<span class="comment">// 1. @EnableKafka enables listener container</span>
+<span class="comment">// 2. Spring creates consumer threads</span>
+<span class="comment">// 3. JsonDeserializer converts JSON to POJO</span>
+<span class="comment">// 4. @KafkaListener method invoked with event object</span>
+</code></pre>
+
+            <h2>Integration Matrix</h2>
+            <table>
+                <tr>
+                    <th>Component A</th>
+                    <th>Integrates With</th>
+                    <th>Integration Mechanism</th>
+                </tr>
+                <tr>
+                    <td>Controller</td>
+                    <td>Service</td>
+                    <td>Dependency Injection (@Autowired, constructor)</td>
+                </tr>
+                <tr>
+                    <td>Service</td>
+                    <td>Repository</td>
+                    <td>Spring Data JPA proxy injection</td>
+                </tr>
+                <tr>
+                    <td>Service</td>
+                    <td>Other Services</td>
+                    <td>Feign Client + Eureka discovery</td>
+                </tr>
+                <tr>
+                    <td>Service</td>
+                    <td>Kafka</td>
+                    <td>KafkaTemplate (producer), @KafkaListener (consumer)</td>
+                </tr>
+                <tr>
+                    <td>Repository</td>
+                    <td>Database</td>
+                    <td>Hibernate + HikariCP connection pool</td>
+                </tr>
+                <tr>
+                    <td>Entity</td>
+                    <td>Value Object</td>
+                    <td>@Embedded annotation</td>
+                </tr>
+                <tr>
+                    <td>Gateway</td>
+                    <td>Services</td>
+                    <td>HTTP routing + Eureka load balancing</td>
+                </tr>
+                <tr>
+                    <td>Gateway</td>
+                    <td>Security</td>
+                    <td>JWT filter in gateway filter chain</td>
+                </tr>
+                <tr>
+                    <td>DTO</td>
+                    <td>Entity</td>
+                    <td>MapStruct mapper (compile-time code generation)</td>
+                </tr>
+            </table>
+
+            <h2>Configuration Files Integration</h2>
+            <pre><code><span class="comment"># Complete application.yml showing all integrations</span>
+
+server:
+  port: 8083
+
+spring:
+  application:
+    name: order-service                    <span class="comment"># Eureka registration name</span>
+
+  <span class="comment"># DATABASE INTEGRATION</span>
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order_db
+    username: postgres
+    hikari:
+      maximum-pool-size: 10               <span class="comment"># Connection pooling</span>
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  <span class="comment"># KAFKA INTEGRATION</span>
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: order-service
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+<span class="comment"># EUREKA INTEGRATION</span>
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+<span class="comment"># FEIGN INTEGRATION</span>
+spring.cloud.openfeign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 5000
+
+<span class="comment"># RESILIENCE4J INTEGRATION</span>
+resilience4j:
+  circuitbreaker:
+    instances:
+      productService:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+</code></pre>
+
+            <h2>Startup Order</h2>
+            <div class="info-box warning">
+                <div class="info-box-title">Services Must Start in Order!</div>
+                <ol>
+                    <li><strong>Eureka Server</strong> (8761) - Must be first, others register here</li>
+                    <li><strong>Kafka</strong> + <strong>Zookeeper</strong> - For event messaging</li>
+                    <li><strong>PostgreSQL</strong> databases - Each service needs its DB</li>
+                    <li><strong>API Gateway</strong> (8080) - Needs Eureka to route</li>
+                    <li><strong>User Service</strong> (8081) - Independent</li>
+                    <li><strong>Product Service</strong> (8082) - Independent</li>
+                    <li><strong>Order Service</strong> (8083) - Needs Product Service for Feign</li>
+                </ol>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

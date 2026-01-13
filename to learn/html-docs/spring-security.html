@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Security & JWT Guide</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link active">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span>Security & JWT</span>
+            </div>
+
+            <h1>Security & JWT Authentication</h1>
+            <p class="lead">
+                MicroMart uses Spring Security with JWT tokens for stateless authentication.
+                This guide covers authentication, authorization, and security best practices.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Spring Security</span>
+                <span class="tech-item">JWT (JSON Web Tokens)</span>
+                <span class="tech-item">BCrypt</span>
+                <span class="tech-item">RBAC</span>
+            </div>
+
+            <h2>Authentication vs Authorization</h2>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Authentication</h3>
+                    <p><strong>"Who are you?"</strong></p>
+                    <ul>
+                        <li>Verifying user identity</li>
+                        <li>Username + password check</li>
+                        <li>Issues JWT token on success</li>
+                    </ul>
+                    <span class="badge primary">Login Process</span>
+                </div>
+
+                <div class="card">
+                    <h3>Authorization</h3>
+                    <p><strong>"What can you do?"</strong></p>
+                    <ul>
+                        <li>Checking permissions</li>
+                        <li>Role-based access control</li>
+                        <li>Endpoint protection</li>
+                    </ul>
+                    <span class="badge success">Access Control</span>
+                </div>
+            </div>
+
+            <h2>JWT (JSON Web Tokens)</h2>
+
+            <div class="info-box info">
+                <div class="info-box-title">What is JWT?</div>
+                <p>
+                    JWT is a compact, URL-safe token format. It contains user information (claims)
+                    and is digitally signed. The server doesn't need to store session data -
+                    all information is in the token itself (stateless).
+                </p>
+            </div>
+
+            <h3>JWT Structure</h3>
+            <p>A JWT has three parts separated by dots:</p>
+
+            <pre><code><span class="string">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span>.<span class="annotation">eyJzdWIiOiJqb2huX2RvZSIsInVzZXJJZCI6MSwiZXhwIjoxNzA1MzIzMjAwfQ</span>.<span class="keyword">SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</span>
+
+<span class="comment">Part 1: Header (algorithm, type)</span>
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+<span class="comment">Part 2: Payload (claims - user data)</span>
+{
+  "sub": "john_doe",
+  "userId": 1,
+  "roles": ["USER", "ADMIN"],
+  "iat": 1705236800,
+  "exp": 1705323200
+}
+
+<span class="comment">Part 3: Signature (verifies the token wasn't tampered with)</span>
+HMACSHA256(base64(header) + "." + base64(payload), secret)
+</code></pre>
+
+            <h3>JWT Flow in MicroMart</h3>
+            <div class="architecture-box">
+                <ol style="text-align: left; max-width: 700px; margin: 0 auto;">
+                    <li style="margin: 12px 0;">
+                        <strong>Login:</strong> User sends username/password to <code>POST /api/auth/login</code>
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Validate:</strong> User Service verifies credentials against database
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Generate:</strong> User Service creates JWT with user info and signs it
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Return:</strong> JWT sent to client in response
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Store:</strong> Client stores JWT (localStorage, cookie, etc.)
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Request:</strong> Client sends JWT in <code>Authorization: Bearer &lt;token&gt;</code> header
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Validate:</strong> API Gateway validates JWT signature and expiration
+                    </li>
+                    <li style="margin: 12px 0;">
+                        <strong>Forward:</strong> Gateway adds user info to headers and forwards to service
+                    </li>
+                </ol>
+            </div>
+
+            <h2>Implementation</h2>
+
+            <h3>JWT Token Provider</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtTokenProvider</span> {
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.secret}"</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> jwtSecret;
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.expiration}"</span>)
+    <span class="keyword">private long</span> jwtExpiration;  <span class="comment">// milliseconds</span>
+
+    <span class="comment">// Generate token after successful authentication</span>
+    <span class="keyword">public</span> <span class="class-name">String</span> generateToken(<span class="class-name">Authentication</span> authentication) {
+        <span class="class-name">UserPrincipal</span> user = (<span class="class-name">UserPrincipal</span>) authentication.getPrincipal();
+
+        <span class="class-name">Date</span> now = <span class="keyword">new</span> <span class="class-name">Date</span>();
+        <span class="class-name">Date</span> expiry = <span class="keyword">new</span> <span class="class-name">Date</span>(now.getTime() + jwtExpiration);
+
+        <span class="keyword">return</span> <span class="class-name">Jwts</span>.builder()
+            .setSubject(user.getUsername())
+            .claim(<span class="string">"userId"</span>, user.getId())
+            .claim(<span class="string">"roles"</span>, user.getRoles())
+            .setIssuedAt(now)
+            .setExpiration(expiry)
+            .signWith(<span class="class-name">SignatureAlgorithm</span>.HS512, jwtSecret)
+            .compact();
+    }
+
+    <span class="comment">// Validate token signature and expiration</span>
+    <span class="keyword">public boolean</span> validateToken(<span class="class-name">String</span> token) {
+        <span class="keyword">try</span> {
+            <span class="class-name">Jwts</span>.parser()
+                .setSigningKey(jwtSecret)
+                .parseClaimsJws(token);
+            <span class="keyword">return true</span>;
+        } <span class="keyword">catch</span> (<span class="class-name">JwtException</span> | <span class="class-name">IllegalArgumentException</span> e) {
+            <span class="keyword">return false</span>;
+        }
+    }
+
+    <span class="comment">// Extract username from token</span>
+    <span class="keyword">public</span> <span class="class-name">String</span> getUsername(<span class="class-name">String</span> token) {
+        <span class="keyword">return</span> <span class="class-name">Jwts</span>.parser()
+            .setSigningKey(jwtSecret)
+            .parseClaimsJws(token)
+            .getBody()
+            .getSubject();
+    }
+
+    <span class="comment">// Extract user ID from token</span>
+    <span class="keyword">public</span> <span class="class-name">Long</span> getUserId(<span class="class-name">String</span> token) {
+        <span class="keyword">return</span> <span class="class-name">Jwts</span>.parser()
+            .setSigningKey(jwtSecret)
+            .parseClaimsJws(token)
+            .getBody()
+            .get(<span class="string">"userId"</span>, <span class="class-name">Long</span>.<span class="keyword">class</span>);
+    }
+}
+</code></pre>
+
+            <h3>JWT Authentication Filter</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtAuthenticationFilter</span> <span class="keyword">extends</span> <span class="class-name">OncePerRequestFilter</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">JwtTokenProvider</span> tokenProvider;
+    <span class="keyword">private final</span> <span class="class-name">UserDetailsService</span> userDetailsService;
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">protected void</span> doFilterInternal(<span class="class-name">HttpServletRequest</span> request,
+                                     <span class="class-name">HttpServletResponse</span> response,
+                                     <span class="class-name">FilterChain</span> chain) {
+
+        <span class="comment">// 1. Extract token from header</span>
+        <span class="class-name">String</span> token = extractToken(request);
+
+        <span class="comment">// 2. Validate and authenticate</span>
+        <span class="keyword">if</span> (token != <span class="keyword">null</span> && tokenProvider.validateToken(token)) {
+            <span class="class-name">String</span> username = tokenProvider.getUsername(token);
+            <span class="class-name">UserDetails</span> userDetails = userDetailsService.loadUserByUsername(username);
+
+            <span class="class-name">UsernamePasswordAuthenticationToken</span> auth =
+                <span class="keyword">new</span> <span class="class-name">UsernamePasswordAuthenticationToken</span>(
+                    userDetails, <span class="keyword">null</span>, userDetails.getAuthorities()
+                );
+
+            <span class="comment">// 3. Set authentication in SecurityContext</span>
+            <span class="class-name">SecurityContextHolder</span>.getContext().setAuthentication(auth);
+        }
+
+        chain.doFilter(request, response);
+    }
+
+    <span class="keyword">private</span> <span class="class-name">String</span> extractToken(<span class="class-name">HttpServletRequest</span> request) {
+        <span class="class-name">String</span> header = request.getHeader(<span class="string">"Authorization"</span>);
+        <span class="keyword">if</span> (header != <span class="keyword">null</span> && header.startsWith(<span class="string">"Bearer "</span>)) {
+            <span class="keyword">return</span> header.substring(<span class="number">7</span>);
+        }
+        <span class="keyword">return null</span>;
+    }
+}
+</code></pre>
+
+            <h3>Security Configuration</h3>
+            <pre><code><span class="annotation">@Configuration</span>
+<span class="annotation">@EnableWebSecurity</span>
+<span class="annotation">@EnableMethodSecurity</span>
+<span class="keyword">public class</span> <span class="class-name">SecurityConfig</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">JwtAuthenticationFilter</span> jwtFilter;
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">SecurityFilterChain</span> filterChain(<span class="class-name">HttpSecurity</span> http) <span class="keyword">throws</span> <span class="class-name">Exception</span> {
+        <span class="keyword">return</span> http
+            .csrf(csrf -> csrf.disable())  <span class="comment">// Disable CSRF for REST APIs</span>
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(<span class="class-name">SessionCreationPolicy</span>.STATELESS)
+            )
+            .authorizeHttpRequests(auth -> auth
+                <span class="comment">// Public endpoints</span>
+                .requestMatchers(<span class="string">"/api/auth/**"</span>).permitAll()
+                .requestMatchers(<span class="string">"/actuator/health"</span>).permitAll()
+                .requestMatchers(<span class="class-name">HttpMethod</span>.GET, <span class="string">"/api/products/**"</span>).permitAll()
+
+                <span class="comment">// Admin only endpoints</span>
+                .requestMatchers(<span class="class-name">HttpMethod</span>.POST, <span class="string">"/api/products/**"</span>).hasRole(<span class="string">"ADMIN"</span>)
+                .requestMatchers(<span class="class-name">HttpMethod</span>.DELETE, <span class="string">"/api/users/**"</span>).hasRole(<span class="string">"ADMIN"</span>)
+
+                <span class="comment">// All other requests require authentication</span>
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtFilter, <span class="class-name">UsernamePasswordAuthenticationFilter</span>.<span class="keyword">class</span>)
+            .build();
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">PasswordEncoder</span> passwordEncoder() {
+        <span class="keyword">return new</span> <span class="class-name">BCryptPasswordEncoder</span>(<span class="number">12</span>);
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">AuthenticationManager</span> authenticationManager(
+            <span class="class-name">AuthenticationConfiguration</span> config) <span class="keyword">throws</span> <span class="class-name">Exception</span> {
+        <span class="keyword">return</span> config.getAuthenticationManager();
+    }
+}
+</code></pre>
+
+            <h2>Password Security</h2>
+
+            <h3>BCrypt Hashing</h3>
+            <div class="info-box warning">
+                <div class="info-box-title">Never Store Plain Passwords!</div>
+                <p>
+                    Passwords are hashed using BCrypt before storage. BCrypt is slow by design,
+                    making brute-force attacks impractical. Each password has a unique salt.
+                </p>
+            </div>
+
+            <pre><code><span class="comment">// Hashing a password</span>
+<span class="class-name">String</span> plainPassword = <span class="string">"userPassword123"</span>;
+<span class="class-name">String</span> hashedPassword = passwordEncoder.encode(plainPassword);
+<span class="comment">// Result: $2a$12$K8f2x.Vz1wN3vG5yH8kJeO...</span>
+
+<span class="comment">// Verifying a password</span>
+<span class="keyword">boolean</span> matches = passwordEncoder.matches(plainPassword, hashedPassword);
+<span class="comment">// Result: true</span>
+
+<span class="comment">// In User entity</span>
+<span class="annotation">@Entity</span>
+<span class="keyword">public class</span> <span class="class-name">User</span> {
+    <span class="keyword">private</span> <span class="class-name">String</span> password;  <span class="comment">// Stores BCrypt hash, never plain text</span>
+}
+</code></pre>
+
+            <h2>Role-Based Access Control (RBAC)</h2>
+
+            <h3>Roles in MicroMart</h3>
+            <table>
+                <tr>
+                    <th>Role</th>
+                    <th>Permissions</th>
+                </tr>
+                <tr>
+                    <td><span class="badge">USER</span></td>
+                    <td>View products, place orders, manage own profile</td>
+                </tr>
+                <tr>
+                    <td><span class="badge purple">MODERATOR</span></td>
+                    <td>USER permissions + moderate reviews, manage categories</td>
+                </tr>
+                <tr>
+                    <td><span class="badge" style="background: #fff5f5; color: #e03131;">ADMIN</span></td>
+                    <td>All permissions - manage users, products, orders, system config</td>
+                </tr>
+            </table>
+
+            <h3>Method-Level Security</h3>
+            <pre><code><span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/users"</span>)
+<span class="keyword">public class</span> <span class="class-name">UserController</span> {
+
+    <span class="comment">// Only ADMIN can access</span>
+    <span class="annotation">@GetMapping</span>
+    <span class="annotation">@PreAuthorize</span>(<span class="string">"hasRole('ADMIN')"</span>)
+    <span class="keyword">public</span> <span class="class-name">List</span>&lt;<span class="class-name">UserResponse</span>&gt; getAllUsers() { }
+
+    <span class="comment">// User can only access their own data, or ADMIN can access any</span>
+    <span class="annotation">@GetMapping</span>(<span class="string">"/{id}"</span>)
+    <span class="annotation">@PreAuthorize</span>(<span class="string">"#id == authentication.principal.id or hasRole('ADMIN')"</span>)
+    <span class="keyword">public</span> <span class="class-name">UserResponse</span> getUser(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id) { }
+
+    <span class="comment">// Multiple roles allowed</span>
+    <span class="annotation">@DeleteMapping</span>(<span class="string">"/{id}"</span>)
+    <span class="annotation">@PreAuthorize</span>(<span class="string">"hasAnyRole('ADMIN', 'MODERATOR')"</span>)
+    <span class="keyword">public void</span> deleteUser(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id) { }
+
+    <span class="comment">// Check after method execution</span>
+    <span class="annotation">@PostAuthorize</span>(<span class="string">"returnObject.userId == authentication.principal.id"</span>)
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> getOrder(<span class="class-name">Long</span> orderId) { }
+}
+</code></pre>
+
+            <h3>Common SpEL Expressions</h3>
+            <table>
+                <tr>
+                    <th>Expression</th>
+                    <th>Meaning</th>
+                </tr>
+                <tr>
+                    <td><code>hasRole('ADMIN')</code></td>
+                    <td>User has ADMIN role</td>
+                </tr>
+                <tr>
+                    <td><code>hasAnyRole('ADMIN', 'MODERATOR')</code></td>
+                    <td>User has either role</td>
+                </tr>
+                <tr>
+                    <td><code>isAuthenticated()</code></td>
+                    <td>User is logged in</td>
+                </tr>
+                <tr>
+                    <td><code>authentication.principal.id</code></td>
+                    <td>Current user's ID</td>
+                </tr>
+                <tr>
+                    <td><code>#id == authentication.principal.id</code></td>
+                    <td>Path variable matches current user</td>
+                </tr>
+            </table>
+
+            <h2>Gateway Security</h2>
+
+            <h3>JWT Validation at Gateway</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtGatewayFilter</span> <span class="keyword">implements</span> <span class="class-name">GatewayFilter</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">JwtTokenProvider</span> tokenProvider;
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">Mono</span>&lt;<span class="class-name">Void</span>&gt; filter(<span class="class-name">ServerWebExchange</span> exchange, <span class="class-name">GatewayFilterChain</span> chain) {
+        <span class="class-name">String</span> path = exchange.getRequest().getPath().value();
+
+        <span class="comment">// Skip auth endpoints</span>
+        <span class="keyword">if</span> (path.startsWith(<span class="string">"/api/auth"</span>)) {
+            <span class="keyword">return</span> chain.filter(exchange);
+        }
+
+        <span class="class-name">String</span> token = extractToken(exchange.getRequest());
+
+        <span class="keyword">if</span> (token == <span class="keyword">null</span> || !tokenProvider.validateToken(token)) {
+            exchange.getResponse().setStatusCode(<span class="class-name">HttpStatus</span>.UNAUTHORIZED);
+            <span class="keyword">return</span> exchange.getResponse().setComplete();
+        }
+
+        <span class="comment">// Add user info to headers for downstream services</span>
+        <span class="class-name">Long</span> userId = tokenProvider.getUserId(token);
+        <span class="class-name">String</span> roles = tokenProvider.getRoles(token);
+
+        <span class="class-name">ServerHttpRequest</span> request = exchange.getRequest().mutate()
+            .header(<span class="string">"X-User-Id"</span>, userId.toString())
+            .header(<span class="string">"X-User-Roles"</span>, roles)
+            .build();
+
+        <span class="keyword">return</span> chain.filter(exchange.mutate().request(request).build());
+    }
+}
+</code></pre>
+
+            <h2>Security Best Practices</h2>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Token Security</h3>
+                    <ul>
+                        <li>Use strong secrets (256+ bits)</li>
+                        <li>Set reasonable expiration (24h)</li>
+                        <li>Use HTTPS in production</li>
+                        <li>Don't store tokens in localStorage (XSS risk)</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Password Security</h3>
+                    <ul>
+                        <li>Use BCrypt with strength 12+</li>
+                        <li>Enforce password complexity</li>
+                        <li>Implement account lockout</li>
+                        <li>Never log passwords</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>API Security</h3>
+                    <ul>
+                        <li>Validate all input</li>
+                        <li>Use rate limiting</li>
+                        <li>Implement CORS properly</li>
+                        <li>Return generic error messages</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h3>Data Security</h3>
+                    <ul>
+                        <li>Encrypt sensitive data</li>
+                        <li>Use parameterized queries</li>
+                        <li>Minimize data exposure</li>
+                        <li>Audit security events</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2>Configuration</h2>
+            <pre><code><span class="comment"># application.yml</span>
+jwt:
+  secret: ${JWT_SECRET}  <span class="comment"># Use environment variable!</span>
+  expiration: 86400000   <span class="comment"># 24 hours in milliseconds</span>
+
+<span class="comment"># Never commit real secrets to git!</span>
+<span class="comment"># Use environment variables or secret management tools</span>
+</code></pre>
+
+            <div class="info-box danger">
+                <div class="info-box-title">Security Warning</div>
+                <p>
+                    Never hardcode secrets in your code or commit them to version control.
+                    Use environment variables, secret managers (AWS Secrets Manager, HashiCorp Vault),
+                    or Spring Cloud Config with encryption.
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

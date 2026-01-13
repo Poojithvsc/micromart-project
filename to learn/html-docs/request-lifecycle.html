@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - Request Lifecycle Deep Dive</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link active">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <h1>Request Lifecycle Deep Dive</h1>
+            <p class="lead">
+                Follow a complete request from browser to database and back. This is the most important
+                document for understanding how all technologies work together.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Why This Matters</div>
+                <p>
+                    Understanding the request lifecycle helps you debug issues, know where to add new features,
+                    and see how PEAA patterns, Spring Boot, JPA, and Kafka all connect in a real flow.
+                </p>
+            </div>
+
+            <h2>Scenario: User Places an Order</h2>
+            <p>
+                Let's trace the complete flow when a user clicks "Place Order" in the frontend.
+                We'll see every layer, every technology, and every pattern in action.
+            </p>
+
+            <div class="architecture-box">
+                <h3>The Journey</h3>
+                <p style="font-family: monospace; text-align: left; max-width: 800px; margin: 20px auto;">
+                    Browser -> API Gateway -> Order Service Controller -> Order Service ->
+                    Product Client (Feign) -> Product Service -> Database ->
+                    Back through all layers -> Kafka Event -> Response to Browser
+                </p>
+            </div>
+
+            <h2>Step 1: Browser Sends Request</h2>
+            <div class="info-box" style="background: #f8f9fa; border-left-color: #868e96;">
+                <div class="info-box-title">Frontend (JavaScript)</div>
+            </div>
+
+            <pre><code><span class="comment">// Frontend code sends POST request</span>
+fetch(<span class="string">'http://localhost:8080/api/orders'</span>, {
+    method: <span class="string">'POST'</span>,
+    headers: {
+        <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+        <span class="string">'Authorization'</span>: <span class="string">'Bearer eyJhbGciOiJIUzUxMiJ9...'</span>  <span class="comment">// JWT token</span>
+    },
+    body: JSON.stringify({
+        items: [
+            { productId: <span class="number">1</span>, quantity: <span class="number">2</span> },
+            { productId: <span class="number">5</span>, quantity: <span class="number">1</span> }
+        ],
+        street: <span class="string">'123 Main St'</span>,
+        city: <span class="string">'New York'</span>,
+        state: <span class="string">'NY'</span>,
+        postalCode: <span class="string">'10001'</span>,
+        country: <span class="string">'USA'</span>
+    })
+})
+</code></pre>
+
+            <p><strong>What happens:</strong></p>
+            <ul>
+                <li>HTTP POST request sent to port 8080 (API Gateway)</li>
+                <li>JWT token included in Authorization header</li>
+                <li>Request body is JSON with order details</li>
+            </ul>
+
+            <h2>Step 2: API Gateway Receives Request</h2>
+            <div class="info-box" style="background: #fff9db; border-left-color: #f08c00;">
+                <div class="info-box-title">API Gateway (Port 8080)</div>
+                <p>Technologies: Spring Cloud Gateway, JWT Validation</p>
+            </div>
+
+            <pre><code><span class="comment">// GatewayConfig.java - Route configuration</span>
+<span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="class-name">GatewayConfig</span> {
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">RouteLocator</span> routes(<span class="class-name">RouteLocatorBuilder</span> builder) {
+        <span class="keyword">return</span> builder.routes()
+            .route(<span class="string">"order-service"</span>, r -> r
+                .path(<span class="string">"/api/orders/**"</span>)              <span class="comment">// Match this path</span>
+                .filters(f -> f
+                    .filter(jwtAuthFilter)            <span class="comment">// Validate JWT</span>
+                    .circuitBreaker(c -> c.setName(<span class="string">"orderCB"</span>)))
+                .uri(<span class="string">"lb://order-service"</span>))          <span class="comment">// Forward to order-service</span>
+            .build();
+    }
+}
+
+<span class="comment">// JwtAuthenticationFilter.java - JWT validation</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtAuthenticationFilter</span> <span class="keyword">implements</span> <span class="class-name">GatewayFilter</span> {
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">Mono</span>&lt;<span class="class-name">Void</span>&gt; filter(<span class="class-name">ServerWebExchange</span> exchange, <span class="class-name">GatewayFilterChain</span> chain) {
+        <span class="comment">// 1. Extract token from header</span>
+        <span class="class-name">String</span> token = extractToken(exchange.getRequest());
+
+        <span class="comment">// 2. Validate token</span>
+        <span class="keyword">if</span> (!jwtProvider.validateToken(token)) {
+            exchange.getResponse().setStatusCode(<span class="class-name">HttpStatus</span>.UNAUTHORIZED);
+            <span class="keyword">return</span> exchange.getResponse().setComplete();
+        }
+
+        <span class="comment">// 3. Extract user info and add to headers</span>
+        <span class="class-name">Long</span> userId = jwtProvider.getUserId(token);
+        <span class="class-name">String</span> roles = jwtProvider.getRoles(token);
+
+        <span class="class-name">ServerHttpRequest</span> modifiedRequest = exchange.getRequest().mutate()
+            .header(<span class="string">"X-User-Id"</span>, userId.toString())
+            .header(<span class="string">"X-User-Roles"</span>, roles)
+            .build();
+
+        <span class="comment">// 4. Forward to downstream service</span>
+        <span class="keyword">return</span> chain.filter(exchange.mutate().request(modifiedRequest).build());
+    }
+}
+</code></pre>
+
+            <p><strong>What happens:</strong></p>
+            <ol>
+                <li>Gateway matches path <code>/api/orders/**</code> to order-service route</li>
+                <li>JWT filter extracts and validates the token</li>
+                <li>User ID and roles extracted from token, added as headers</li>
+                <li>Gateway asks Eureka: "Where is order-service?"</li>
+                <li>Eureka returns: "order-service is at 192.168.1.10:8083"</li>
+                <li>Request forwarded to Order Service</li>
+            </ol>
+
+            <h2>Step 3: Order Controller Receives Request</h2>
+            <div class="info-box" style="background: #b2f2bb; border-left-color: #2f9e44;">
+                <div class="info-box-title">Order Service - Controller Layer</div>
+                <p>Pattern: PEAA Service Layer Entry Point</p>
+            </div>
+
+            <pre><code><span class="comment">// OrderController.java</span>
+<span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/orders"</span>)
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">OrderController</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">OrderService</span> orderService;  <span class="comment">// Injected by Spring</span>
+
+    <span class="annotation">@PostMapping</span>
+    <span class="annotation">@ResponseStatus</span>(<span class="class-name">HttpStatus</span>.CREATED)
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(
+            <span class="annotation">@Valid</span> <span class="annotation">@RequestBody</span> <span class="class-name">CreateOrderRequest</span> request,  <span class="comment">// DTO pattern</span>
+            <span class="annotation">@RequestHeader</span>(<span class="string">"X-User-Id"</span>) <span class="class-name">Long</span> userId) {       <span class="comment">// From Gateway</span>
+
+        <span class="comment">// Controller's only job: delegate to service layer</span>
+        <span class="keyword">return</span> orderService.createOrder(request, userId);
+    }
+}
+</code></pre>
+
+            <p><strong>What happens:</strong></p>
+            <ol>
+                <li><strong>@RequestBody</strong> - Spring deserializes JSON into <code>CreateOrderRequest</code> DTO</li>
+                <li><strong>@Valid</strong> - Jakarta Validation checks all constraints (@NotNull, @Size, etc.)</li>
+                <li><strong>@RequestHeader</strong> - Extracts user ID from header (added by Gateway)</li>
+                <li>Controller delegates to Service Layer (PEAA pattern)</li>
+            </ol>
+
+            <h2>Step 4: Order Service - Business Logic</h2>
+            <div class="info-box" style="background: #e7f5ff; border-left-color: #1864ab;">
+                <div class="info-box-title">Order Service - Service Layer</div>
+                <p>Pattern: PEAA Service Layer, Domain Model</p>
+            </div>
+
+            <pre><code><span class="comment">// OrderServiceImpl.java</span>
+<span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>  <span class="comment">// All DB operations in one transaction</span>
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">OrderServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">OrderService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">OrderRepository</span> orderRepository;      <span class="comment">// Repository pattern</span>
+    <span class="keyword">private final</span> <span class="class-name">ProductClient</span> productClient;          <span class="comment">// Feign client</span>
+    <span class="keyword">private final</span> <span class="class-name">InventoryClient</span> inventoryClient;      <span class="comment">// Feign client</span>
+    <span class="keyword">private final</span> <span class="class-name">OrderMapper</span> orderMapper;              <span class="comment">// MapStruct</span>
+    <span class="keyword">private final</span> <span class="class-name">OrderEventPublisher</span> eventPublisher;  <span class="comment">// Kafka producer</span>
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(<span class="class-name">CreateOrderRequest</span> request, <span class="class-name">Long</span> userId) {
+
+        <span class="comment">// STEP 4a: Generate unique order number</span>
+        <span class="class-name">String</span> orderNumber = <span class="string">"ORD-"</span> + <span class="class-name">UUID</span>.randomUUID().toString().substring(<span class="number">0</span>, <span class="number">8</span>);
+
+        <span class="comment">// STEP 4b: Call Product Service via Feign to get product details</span>
+        <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; productIds = request.items().stream()
+            .map(<span class="class-name">OrderItemRequest</span>::productId)
+            .toList();
+        <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; products = productClient.getProducts(productIds);
+        <span class="comment">// ^^^ This triggers Step 5 - calling another microservice!</span>
+
+        <span class="comment">// STEP 4c: Reserve inventory for each item</span>
+        <span class="keyword">for</span> (<span class="class-name">OrderItemRequest</span> item : request.items()) {
+            inventoryClient.reserveStock(item.productId(),
+                <span class="keyword">new</span> <span class="class-name">ReserveStockRequest</span>(item.quantity()));
+            <span class="comment">// ^^^ Another Feign call to Product Service</span>
+        }
+
+        <span class="comment">// STEP 4d: Create Order entity (Domain Model pattern)</span>
+        <span class="class-name">Order</span> order = <span class="keyword">new</span> <span class="class-name">Order</span>();
+        order.setOrderNumber(orderNumber);
+        order.setUserId(userId);
+        order.setStatus(<span class="class-name">OrderStatus</span>.PENDING);
+        order.setShippingAddress(<span class="class-name">Address</span>.of(          <span class="comment">// Value Object</span>
+            request.street(), request.city(),
+            request.state(), request.postalCode(), request.country()
+        ));
+
+        <span class="comment">// STEP 4e: Create OrderItems (Aggregate pattern)</span>
+        <span class="keyword">for</span> (<span class="class-name">OrderItemRequest</span> itemReq : request.items()) {
+            <span class="class-name">ProductDto</span> product = findProduct(products, itemReq.productId());
+
+            <span class="class-name">OrderItem</span> item = <span class="keyword">new</span> <span class="class-name">OrderItem</span>();
+            item.setProductId(product.id());
+            item.setProductName(product.name());      <span class="comment">// Denormalized</span>
+            item.setProductSku(product.sku());
+            item.setQuantity(itemReq.quantity());
+            item.setUnitPrice(<span class="class-name">Money</span>.of(product.price(), product.currency()));
+
+            order.addItem(item);  <span class="comment">// Aggregate root controls children</span>
+        }
+
+        <span class="comment">// STEP 4f: Save to database (triggers Step 6)</span>
+        order = orderRepository.save(order);
+
+        <span class="comment">// STEP 4g: Publish event to Kafka (triggers Step 7)</span>
+        eventPublisher.publishOrderCreated(order);
+
+        <span class="comment">// STEP 4h: Convert entity to DTO and return</span>
+        <span class="keyword">return</span> orderMapper.toResponse(order);
+    }
+}
+</code></pre>
+
+            <p><strong>Patterns in action:</strong></p>
+            <ul>
+                <li><strong>Service Layer (PEAA)</strong> - All business logic here, not in controller</li>
+                <li><strong>@Transactional</strong> - Entire method runs in one database transaction</li>
+                <li><strong>Repository Pattern</strong> - Data access through repository interface</li>
+                <li><strong>Domain Model</strong> - Order entity has behavior (addItem method)</li>
+                <li><strong>Aggregate</strong> - Order is root, controls OrderItems</li>
+                <li><strong>Value Object</strong> - Address and Money are immutable value objects</li>
+                <li><strong>DTO Pattern</strong> - Request/Response DTOs separate API from domain</li>
+            </ul>
+
+            <h2>Step 5: Feign Calls Product Service</h2>
+            <div class="info-box" style="background: #c5f6fa; border-left-color: #1098ad;">
+                <div class="info-box-title">Inter-Service Communication</div>
+                <p>Technologies: OpenFeign, Eureka, Circuit Breaker</p>
+            </div>
+
+            <pre><code><span class="comment">// ProductClient.java - Feign interface</span>
+<span class="annotation">@FeignClient</span>(
+    name = <span class="string">"product-service"</span>,                    <span class="comment">// Eureka service name</span>
+    fallback = <span class="class-name">ProductClientFallback</span>.<span class="keyword">class</span>       <span class="comment">// Fallback if service down</span>
+)
+<span class="keyword">public interface</span> <span class="class-name">ProductClient</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/api/products/batch"</span>)
+    <span class="class-name">List</span>&lt;<span class="class-name">ProductDto</span>&gt; getProducts(<span class="annotation">@RequestParam</span>(<span class="string">"ids"</span>) <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids);
+}
+
+<span class="comment">// What Feign does behind the scenes:</span>
+<span class="comment">// 1. Asks Eureka: "Where is product-service?"</span>
+<span class="comment">// 2. Gets response: "192.168.1.11:8082"</span>
+<span class="comment">// 3. Makes HTTP GET to: http://192.168.1.11:8082/api/products/batch?ids=1,5</span>
+<span class="comment">// 4. Deserializes JSON response into List&lt;ProductDto&gt;</span>
+<span class="comment">// 5. If timeout/error, circuit breaker may open, fallback called</span>
+</code></pre>
+
+            <pre><code><span class="comment">// ProductController.java (in Product Service)</span>
+<span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/products"</span>)
+<span class="keyword">public class</span> <span class="class-name">ProductController</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/batch"</span>)
+    <span class="keyword">public</span> <span class="class-name">List</span>&lt;<span class="class-name">ProductResponse</span>&gt; getProducts(<span class="annotation">@RequestParam</span> <span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids) {
+        <span class="keyword">return</span> productService.getProductsByIds(ids);
+    }
+}
+
+<span class="comment">// ProductServiceImpl.java</span>
+<span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">ProductServiceImpl</span> {
+
+    <span class="keyword">public</span> <span class="class-name">List</span>&lt;<span class="class-name">ProductResponse</span>&gt; getProductsByIds(<span class="class-name">List</span>&lt;<span class="class-name">Long</span>&gt; ids) {
+        <span class="class-name">List</span>&lt;<span class="class-name">Product</span>&gt; products = productRepository.findAllById(ids);
+        <span class="keyword">return</span> products.stream()
+            .map(productMapper::toResponse)
+            .toList();
+    }
+}
+</code></pre>
+
+            <h2>Step 6: Database Operations</h2>
+            <div class="info-box" style="background: #f3d9fa; border-left-color: #7950f2;">
+                <div class="info-box-title">JPA & Hibernate</div>
+                <p>Technologies: Spring Data JPA, Hibernate, PostgreSQL</p>
+            </div>
+
+            <pre><code><span class="comment">// When orderRepository.save(order) is called:</span>
+
+<span class="comment">// 1. Hibernate inspects the Order entity</span>
+<span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"orders"</span>)
+<span class="keyword">public class</span> <span class="class-name">Order</span> {
+    <span class="annotation">@Id</span> <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="keyword">private</span> <span class="class-name">String</span> orderNumber;
+    <span class="keyword">private</span> <span class="class-name">Long</span> userId;
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">OrderStatus</span> status;
+
+    <span class="annotation">@Embedded</span>  <span class="comment">// Value Object - stored in same table</span>
+    <span class="keyword">private</span> <span class="class-name">Address</span> shippingAddress;
+
+    <span class="annotation">@Embedded</span>
+    <span class="annotation">@AttributeOverride</span>(name = <span class="string">"amount"</span>, column = <span class="annotation">@Column</span>(name = <span class="string">"total_amount"</span>))
+    <span class="keyword">private</span> <span class="class-name">Money</span> totalAmount;
+
+    <span class="annotation">@OneToMany</span>(cascade = CascadeType.ALL, orphanRemoval = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">OrderItem</span>&gt; items;  <span class="comment">// Cascade saves children too</span>
+}
+
+<span class="comment">// 2. Hibernate generates SQL:</span>
+INSERT INTO orders (order_number, user_id, status, street, city, state,
+                   postal_code, country, total_amount, total_currency,
+                   created_at, updated_at)
+VALUES (<span class="string">'ORD-a1b2c3d4'</span>, <span class="number">1</span>, <span class="string">'PENDING'</span>, <span class="string">'123 Main St'</span>, <span class="string">'New York'</span>,
+        <span class="string">'NY'</span>, <span class="string">'10001'</span>, <span class="string">'USA'</span>, <span class="number">599.97</span>, <span class="string">'USD'</span>, NOW(), NOW())
+RETURNING id;
+
+<span class="comment">// 3. For each OrderItem (CascadeType.ALL):</span>
+INSERT INTO order_items (order_id, product_id, product_name, product_sku,
+                        quantity, unit_price_amount, unit_price_currency)
+VALUES (<span class="number">1</span>, <span class="number">1</span>, <span class="string">'Wireless Headphones'</span>, <span class="string">'WH-001'</span>, <span class="number">2</span>, <span class="number">199.99</span>, <span class="string">'USD'</span>);
+
+<span class="comment">// 4. @Transactional ensures all-or-nothing</span>
+<span class="comment">// If any insert fails, everything rolls back</span>
+</code></pre>
+
+            <h2>Step 7: Kafka Event Publishing</h2>
+            <div class="info-box" style="background: #1e1e1e; border-left-color: #fff; color: #fff;">
+                <div class="info-box-title" style="color: #fff;">Apache Kafka</div>
+                <p style="color: #ccc;">Technologies: Spring Kafka, Event-Driven Architecture</p>
+            </div>
+
+            <pre><code><span class="comment">// OrderEventPublisher.java</span>
+<span class="annotation">@Component</span>
+<span class="annotation">@RequiredArgsConstructor</span>
+<span class="keyword">public class</span> <span class="class-name">OrderEventPublisher</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafkaTemplate;
+
+    <span class="keyword">public void</span> publishOrderCreated(<span class="class-name">Order</span> order) {
+        <span class="class-name">OrderCreatedEvent</span> event = <span class="keyword">new</span> <span class="class-name">OrderCreatedEvent</span>(
+            order.getId(),
+            order.getOrderNumber(),
+            order.getUserId(),
+            order.getTotalAmount().getAmount(),
+            order.getItems().stream()
+                .map(i -> <span class="keyword">new</span> <span class="class-name">OrderItemDto</span>(i.getProductId(), i.getQuantity()))
+                .toList(),
+            <span class="class-name">LocalDateTime</span>.now()
+        );
+
+        <span class="comment">// Send to Kafka topic "order-events"</span>
+        <span class="comment">// Key = orderId (for partitioning)</span>
+        kafkaTemplate.send(<span class="string">"order-events"</span>, order.getId().toString(), event);
+    }
+}
+
+<span class="comment">// What Kafka does:</span>
+<span class="comment">// 1. Serializes event to JSON</span>
+<span class="comment">// 2. Determines partition based on key (orderId)</span>
+<span class="comment">// 3. Sends to Kafka broker</span>
+<span class="comment">// 4. Broker persists message to disk</span>
+<span class="comment">// 5. Other services can consume this event later</span>
+</code></pre>
+
+            <pre><code><span class="comment">// NotificationListener.java (in another service)</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">NotificationListener</span> {
+
+    <span class="annotation">@KafkaListener</span>(topics = <span class="string">"order-events"</span>, groupId = <span class="string">"notification-service"</span>)
+    <span class="keyword">public void</span> handleOrderCreated(<span class="class-name">OrderCreatedEvent</span> event) {
+        <span class="comment">// This runs asynchronously, after order is saved</span>
+        emailService.sendOrderConfirmation(event.userId(), event.orderNumber());
+    }
+}
+</code></pre>
+
+            <h2>Step 8: Response Returns to Browser</h2>
+            <pre><code><span class="comment">// The response travels back through all layers:</span>
+
+<span class="comment">// 1. OrderServiceImpl returns OrderResponse DTO</span>
+<span class="keyword">return</span> orderMapper.toResponse(order);
+
+<span class="comment">// 2. OrderController receives it and returns</span>
+<span class="annotation">@PostMapping</span>
+<span class="annotation">@ResponseStatus</span>(<span class="class-name">HttpStatus</span>.CREATED)  <span class="comment">// 201 status code</span>
+<span class="keyword">public</span> <span class="class-name">OrderResponse</span> createOrder(...) {
+    <span class="keyword">return</span> orderService.createOrder(request, userId);
+}
+
+<span class="comment">// 3. Spring serializes OrderResponse to JSON</span>
+{
+  "id": <span class="number">1</span>,
+  "orderNumber": <span class="string">"ORD-a1b2c3d4"</span>,
+  "status": <span class="string">"PENDING"</span>,
+  "items": [...],
+  "totalAmount": { "amount": <span class="number">599.97</span>, "currency": <span class="string">"USD"</span> },
+  "shippingAddress": <span class="string">"123 Main St, New York, NY 10001, USA"</span>,
+  "createdAt": <span class="string">"2024-01-15T10:30:00Z"</span>
+}
+
+<span class="comment">// 4. Response goes back through API Gateway to browser</span>
+
+<span class="comment">// 5. Browser receives 201 Created with JSON body</span>
+</code></pre>
+
+            <h2>Complete Flow Diagram</h2>
+            <div class="architecture-box">
+                <pre style="text-align: left; font-size: 0.85rem;">
+Browser
+   |
+   | POST /api/orders (JSON + JWT)
+   v
++------------------+
+|   API Gateway    |  <-- Validates JWT, extracts userId
+|   (Port 8080)    |  <-- Asks Eureka for order-service location
++------------------+
+   |
+   | Forward request + X-User-Id header
+   v
++------------------+
+| Order Controller |  <-- @RestController, @RequestBody, @Valid
+|   (Port 8083)    |  <-- Converts JSON to DTO
++------------------+
+   |
+   | Delegates to service
+   v
++------------------+
+|  OrderService    |  <-- @Service, @Transactional
+|  (Business Logic)|  <-- Domain logic, orchestration
++------------------+
+   |
+   |--- Feign call ---> ProductService (8082) ---> product_db
+   |                         |
+   |<-- ProductDto[] --------+
+   |
+   |--- Feign call ---> InventoryService ---> inventory table
+   |                         |
+   |<-- Success -------------+
+   |
+   | Create Order entity (Domain Model)
+   | Add OrderItems (Aggregate)
+   v
++------------------+
+| OrderRepository  |  <-- Spring Data JPA
+|  (Data Access)   |  <-- Repository Pattern
++------------------+
+   |
+   | save(order)
+   v
++------------------+
+|    Hibernate     |  <-- ORM, generates SQL
+|                  |  <-- Manages @Transactional
++------------------+
+   |
+   | INSERT INTO orders..., INSERT INTO order_items...
+   v
++------------------+
+|   PostgreSQL     |  <-- order_db
+|   (order_db)     |
++------------------+
+   |
+   | Returns generated ID
+   v
++------------------+
+|  Kafka Producer  |  <-- KafkaTemplate.send()
++------------------+
+   |
+   | OrderCreatedEvent
+   v
++------------------+
+|  Kafka Broker    |  <-- Persists message
+|  (order-events)  |  <-- Other services can consume
++------------------+
+   |
+   | (Async) NotificationService consumes event
+   v
++------------------+
+| Email Service    |  <-- Sends order confirmation
++------------------+
+
+Meanwhile, response travels back up:
+OrderRepository -> OrderService -> Controller -> Gateway -> Browser
+                </pre>
+            </div>
+
+            <h2>Key Takeaways</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <h3>Layered Architecture</h3>
+                    <p>Each layer has one responsibility: Controller handles HTTP, Service handles business logic, Repository handles data.</p>
+                </div>
+                <div class="card">
+                    <h3>PEAA Patterns</h3>
+                    <p>Service Layer, Repository, DTO, Domain Model all work together to create clean, maintainable code.</p>
+                </div>
+                <div class="card">
+                    <h3>DDD Patterns</h3>
+                    <p>Aggregates (Order+Items), Value Objects (Money, Address), and Entities model the domain.</p>
+                </div>
+                <div class="card">
+                    <h3>Spring Integration</h3>
+                    <p>@Transactional, @Service, @Repository, @RestController - Spring wires everything together.</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

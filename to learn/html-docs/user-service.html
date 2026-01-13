@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroMart - User Service</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>MicroMart</h2>
+                <p>Documentation</p>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Getting Started</div>
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="architecture.html" class="nav-link">Architecture</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Microservices</div>
+                <a href="user-service.html" class="nav-link active">User Service</a>
+                <a href="product-service.html" class="nav-link">Product Service</a>
+                <a href="order-service.html" class="nav-link">Order Service</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Technologies</div>
+                <a href="spring-boot.html" class="nav-link">Spring Boot</a>
+                <a href="spring-cloud.html" class="nav-link">Spring Cloud</a>
+                <a href="spring-security.html" class="nav-link">Security & JWT</a>
+                <a href="spring-data-jpa.html" class="nav-link">JPA & Database</a>
+                <a href="kafka-events.html" class="nav-link">Kafka & Events</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Reference</div>
+                <a href="design-patterns.html" class="nav-link">Design Patterns</a>
+                <a href="api-reference.html" class="nav-link">API Reference</a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Deep Dives</div>
+                <a href="request-lifecycle.html" class="nav-link">Request Lifecycle</a>
+                <a href="integration-guide.html" class="nav-link">Integration Guide</a>
+                <a href="code-to-database.html" class="nav-link">Code to Database</a>
+                <a href="local-setup.html" class="nav-link">Local Setup</a>
+                <a href="git-workflow.html" class="nav-link">Git Workflow</a>
+                <a href="troubleshooting.html" class="nav-link">Troubleshooting</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <a href="architecture.html">Architecture</a> / <span>User Service</span>
+            </div>
+
+            <h1>User Service</h1>
+            <p class="lead">
+                The authentication and user management microservice. Handles registration, login,
+                JWT token generation, and user profile management.
+            </p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Port 8081</span>
+                <span class="tech-item">PostgreSQL (user_db)</span>
+                <span class="tech-item">Spring Security</span>
+                <span class="tech-item">JWT</span>
+                <span class="tech-item">BCrypt</span>
+            </div>
+
+            <h2>Overview</h2>
+            <p>
+                User Service is responsible for everything related to users and authentication.
+                It's the first service users interact with when they register or log in.
+            </p>
+
+            <div class="info-box info">
+                <div class="info-box-title">Key Responsibilities</div>
+                <ul>
+                    <li>User registration with email verification</li>
+                    <li>Authentication (login) and JWT token generation</li>
+                    <li>Role-based access control (USER, ADMIN, MODERATOR)</li>
+                    <li>User profile management</li>
+                    <li>Password hashing with BCrypt</li>
+                    <li>Publishing user events to Kafka</li>
+                </ul>
+            </div>
+
+            <h2>Domain Model</h2>
+            <p>
+                The User Service has a well-defined domain model:
+            </p>
+
+            <h3>User Entity</h3>
+            <p>The main entity representing a user in the system.</p>
+
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"users"</span>)
+<span class="keyword">public class</span> <span class="class-name">User</span> <span class="keyword">extends</span> <span class="class-name">AuditableEntity</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Column</span>(unique = <span class="keyword">true</span>, nullable = <span class="keyword">false</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> username;
+
+    <span class="annotation">@Embedded</span>
+    <span class="keyword">private</span> <span class="class-name">Email</span> email;  <span class="comment">// Value Object</span>
+
+    <span class="keyword">private</span> <span class="class-name">String</span> password;  <span class="comment">// BCrypt hashed</span>
+
+    <span class="keyword">private</span> <span class="class-name">String</span> firstName;
+    <span class="keyword">private</span> <span class="class-name">String</span> lastName;
+
+    <span class="annotation">@ManyToMany</span>(fetch = FetchType.EAGER)
+    <span class="keyword">private</span> <span class="class-name">Set</span>&lt;<span class="class-name">Role</span>&gt; roles;
+
+    <span class="keyword">private boolean</span> enabled = <span class="keyword">false</span>;
+    <span class="keyword">private int</span> failedLoginAttempts = <span class="number">0</span>;
+    <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> lastLoginAt;
+}
+</code></pre>
+
+            <h3>Email Value Object</h3>
+            <p>
+                Email is implemented as a <strong>Value Object</strong> - an immutable object that validates itself.
+            </p>
+
+            <pre><code><span class="annotation">@Embeddable</span>
+<span class="keyword">public final class</span> <span class="class-name">Email</span> {
+
+    <span class="annotation">@Column</span>(name = <span class="string">"email"</span>, unique = <span class="keyword">true</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> value;
+
+    <span class="comment">// Factory method with validation</span>
+    <span class="keyword">public static</span> <span class="class-name">Email</span> of(<span class="class-name">String</span> value) {
+        <span class="keyword">if</span> (value == <span class="keyword">null</span> || !value.matches(<span class="string">"^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"</span>)) {
+            <span class="keyword">throw new</span> <span class="class-name">InvalidEmailException</span>(value);
+        }
+        <span class="keyword">return new</span> <span class="class-name">Email</span>(value.toLowerCase());
+    }
+
+    <span class="comment">// Immutable - no setters</span>
+    <span class="keyword">public</span> <span class="class-name">String</span> getValue() { <span class="keyword">return</span> value; }
+}
+</code></pre>
+
+            <div class="info-box success">
+                <div class="info-box-title">Why Value Objects?</div>
+                <p>
+                    Value Objects like <code>Email</code> ensure that an email is always valid throughout the system.
+                    You can never have an invalid email because the factory method validates on creation.
+                </p>
+            </div>
+
+            <h3>Role Entity</h3>
+            <pre><code><span class="annotation">@Entity</span>
+<span class="annotation">@Table</span>(name = <span class="string">"roles"</span>)
+<span class="keyword">public class</span> <span class="class-name">Role</span> {
+
+    <span class="annotation">@Id</span>
+    <span class="annotation">@GeneratedValue</span>
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+
+    <span class="annotation">@Enumerated</span>(EnumType.STRING)
+    <span class="keyword">private</span> <span class="class-name">RoleName</span> name;  <span class="comment">// USER, ADMIN, MODERATOR</span>
+
+    <span class="keyword">private</span> <span class="class-name">String</span> description;
+}
+</code></pre>
+
+            <h2>Database Schema</h2>
+
+            <table>
+                <tr>
+                    <th>Table</th>
+                    <th>Columns</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>users</code></td>
+                    <td>id, username, email, password, first_name, last_name, enabled, failed_login_attempts, last_login_at, created_at, updated_at</td>
+                    <td>Stores user accounts</td>
+                </tr>
+                <tr>
+                    <td><code>roles</code></td>
+                    <td>id, name, description</td>
+                    <td>Available roles (USER, ADMIN, MODERATOR)</td>
+                </tr>
+                <tr>
+                    <td><code>user_roles</code></td>
+                    <td>user_id, role_id</td>
+                    <td>Many-to-many join table</td>
+                </tr>
+            </table>
+
+            <h2>Service Layer</h2>
+            <p>
+                The service layer contains all business logic:
+            </p>
+
+            <h3>UserService</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="annotation">@Transactional</span>
+<span class="keyword">public class</span> <span class="class-name">UserServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">UserService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">UserRepository</span> userRepository;
+    <span class="keyword">private final</span> <span class="class-name">PasswordEncoder</span> passwordEncoder;
+    <span class="keyword">private final</span> <span class="class-name">UserMapper</span> userMapper;
+    <span class="keyword">private final</span> <span class="class-name">UserEventPublisher</span> eventPublisher;
+
+    <span class="keyword">public</span> <span class="class-name">UserResponse</span> createUser(<span class="class-name">CreateUserRequest</span> request) {
+        <span class="comment">// 1. Check if username exists</span>
+        <span class="keyword">if</span> (userRepository.existsByUsername(request.username())) {
+            <span class="keyword">throw new</span> <span class="class-name">UsernameAlreadyExistsException</span>(request.username());
+        }
+
+        <span class="comment">// 2. Create user entity</span>
+        <span class="class-name">User</span> user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRoles(Set.of(defaultUserRole));
+
+        <span class="comment">// 3. Save to database</span>
+        user = userRepository.save(user);
+
+        <span class="comment">// 4. Publish event to Kafka</span>
+        eventPublisher.publishUserRegistered(user);
+
+        <span class="comment">// 5. Return response DTO</span>
+        <span class="keyword">return</span> userMapper.toResponse(user);
+    }
+}
+</code></pre>
+
+            <h3>AuthService</h3>
+            <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">AuthServiceImpl</span> <span class="keyword">implements</span> <span class="class-name">AuthService</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">AuthenticationManager</span> authManager;
+    <span class="keyword">private final</span> <span class="class-name">JwtTokenProvider</span> tokenProvider;
+    <span class="keyword">private final</span> <span class="class-name">UserRepository</span> userRepository;
+
+    <span class="keyword">public</span> <span class="class-name">AuthResponse</span> login(<span class="class-name">LoginRequest</span> request) {
+        <span class="comment">// 1. Authenticate with Spring Security</span>
+        <span class="class-name">Authentication</span> auth = authManager.authenticate(
+            <span class="keyword">new</span> <span class="class-name">UsernamePasswordAuthenticationToken</span>(
+                request.username(), request.password()
+            )
+        );
+
+        <span class="comment">// 2. Generate JWT token</span>
+        <span class="class-name">String</span> token = tokenProvider.generateToken(auth);
+
+        <span class="comment">// 3. Update last login time</span>
+        <span class="class-name">User</span> user = userRepository.findByUsername(request.username()).get();
+        user.setLastLoginAt(<span class="class-name">LocalDateTime</span>.now());
+        user.setFailedLoginAttempts(<span class="number">0</span>);
+
+        <span class="keyword">return new</span> <span class="class-name">AuthResponse</span>(token, <span class="string">"Bearer"</span>, <span class="number">86400</span>);
+    }
+}
+</code></pre>
+
+            <h2>API Endpoints</h2>
+
+            <h3>Authentication Endpoints</h3>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/auth/register</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Register a new user account</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "lastName": "Doe"
+}</code></pre>
+                    <p><strong>Response:</strong> 201 Created</p>
+                    <pre><code>{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "roles": ["USER"],
+  "enabled": false
+}</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/api/auth/login</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Authenticate and get JWT token</p>
+                    <p><strong>Auth Required:</strong> No</p>
+                    <p><strong>Request Body:</strong></p>
+                    <pre><code>{
+  "username": "john_doe",
+  "password": "SecurePass123!"
+}</code></pre>
+                    <p><strong>Response:</strong> 200 OK</p>
+                    <pre><code>{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "tokenType": "Bearer",
+  "expiresIn": 86400
+}</code></pre>
+                </div>
+            </div>
+
+            <h3>User Management Endpoints</h3>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/users/me</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get current user's profile</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                    <p><strong>Response:</strong> 200 OK - Returns user details</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method put">PUT</span>
+                    <span class="endpoint-path">/api/users/me</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Update current user's profile</p>
+                    <p><strong>Auth Required:</strong> Yes (JWT)</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/users</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Get all users (paginated)</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                    <p><strong>Query Params:</strong> page, size, sort</p>
+                </div>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method delete">DELETE</span>
+                    <span class="endpoint-path">/api/users/{id}</span>
+                </div>
+                <div class="endpoint-body">
+                    <p><strong>Description:</strong> Delete a user</p>
+                    <p><strong>Auth Required:</strong> Yes (ADMIN only)</p>
+                </div>
+            </div>
+
+            <h2>Security Implementation</h2>
+
+            <h3>Password Hashing</h3>
+            <p>
+                Passwords are never stored in plain text. BCrypt is used to hash passwords:
+            </p>
+            <pre><code><span class="annotation">@Bean</span>
+<span class="keyword">public</span> <span class="class-name">PasswordEncoder</span> passwordEncoder() {
+    <span class="keyword">return new</span> <span class="class-name">BCryptPasswordEncoder</span>(<span class="number">12</span>);  <span class="comment">// Strength 12</span>
+}
+
+<span class="comment">// Usage</span>
+<span class="class-name">String</span> hashed = passwordEncoder.encode(<span class="string">"plain_password"</span>);
+<span class="comment">// Result: $2a$12$K8f2x...</span>
+
+<span class="comment">// Verification</span>
+passwordEncoder.matches(<span class="string">"plain_password"</span>, hashed);  <span class="comment">// true</span>
+</code></pre>
+
+            <h3>JWT Token Generation</h3>
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtTokenProvider</span> {
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.secret}"</span>)
+    <span class="keyword">private</span> <span class="class-name">String</span> jwtSecret;
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.expiration}"</span>)
+    <span class="keyword">private long</span> jwtExpiration;
+
+    <span class="keyword">public</span> <span class="class-name">String</span> generateToken(<span class="class-name">Authentication</span> auth) {
+        <span class="class-name">UserPrincipal</span> principal = (<span class="class-name">UserPrincipal</span>) auth.getPrincipal();
+
+        <span class="keyword">return</span> <span class="class-name">Jwts</span>.builder()
+            .setSubject(principal.getUsername())
+            .claim(<span class="string">"userId"</span>, principal.getId())
+            .claim(<span class="string">"roles"</span>, principal.getRoles())
+            .setIssuedAt(<span class="keyword">new</span> <span class="class-name">Date</span>())
+            .setExpiration(<span class="keyword">new</span> <span class="class-name">Date</span>(<span class="class-name">System</span>.currentTimeMillis() + jwtExpiration))
+            .signWith(<span class="class-name">SignatureAlgorithm</span>.HS512, jwtSecret)
+            .compact();
+    }
+}
+</code></pre>
+
+            <h2>Event Publishing</h2>
+            <p>
+                User Service publishes events to Kafka for other services to consume:
+            </p>
+
+            <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">UserEventPublisher</span> {
+
+    <span class="keyword">private final</span> <span class="class-name">KafkaTemplate</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; kafka;
+
+    <span class="keyword">public void</span> publishUserRegistered(<span class="class-name">User</span> user) {
+        <span class="class-name">UserRegisteredEvent</span> event = <span class="keyword">new</span> <span class="class-name">UserRegisteredEvent</span>(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail().getValue(),
+            <span class="class-name">LocalDateTime</span>.now()
+        );
+        kafka.send(<span class="string">"user-events"</span>, event);
+    }
+}
+</code></pre>
+
+            <h3>Published Events</h3>
+            <table>
+                <tr>
+                    <th>Event</th>
+                    <th>Topic</th>
+                    <th>Trigger</th>
+                </tr>
+                <tr>
+                    <td>UserRegisteredEvent</td>
+                    <td>user-events</td>
+                    <td>New user registration</td>
+                </tr>
+                <tr>
+                    <td>UserUpdatedEvent</td>
+                    <td>user-events</td>
+                    <td>Profile update</td>
+                </tr>
+                <tr>
+                    <td>UserDeletedEvent</td>
+                    <td>user-events</td>
+                    <td>User deletion</td>
+                </tr>
+            </table>
+
+            <h2>Project Structure</h2>
+            <pre><code>user-service/
+  src/main/java/com/micromart/user/
+    config/           <span class="comment"># Security, JWT, Kafka config</span>
+    controller/       <span class="comment"># REST controllers</span>
+    domain/
+      entity/        <span class="comment"># User, Role</span>
+      valueobject/   <span class="comment"># Email</span>
+      event/         <span class="comment"># UserRegisteredEvent</span>
+    dto/
+      request/       <span class="comment"># CreateUserRequest, LoginRequest</span>
+      response/      <span class="comment"># UserResponse, AuthResponse</span>
+    exception/       <span class="comment"># Custom exceptions</span>
+    mapper/          <span class="comment"># MapStruct mappers</span>
+    repository/      <span class="comment"># UserRepository</span>
+    security/        <span class="comment"># JWT filter, UserPrincipal</span>
+    service/         <span class="comment"># UserService, AuthService</span>
+</code></pre>
+
+            <h2>Configuration</h2>
+            <pre><code><span class="comment"># application.yml</span>
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key}
+  expiration: 86400000  <span class="comment"># 24 hours</span>
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+</code></pre>
+
+            <div class="footer">
+                <p>MicroMart Documentation | Built with Spring Boot</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
